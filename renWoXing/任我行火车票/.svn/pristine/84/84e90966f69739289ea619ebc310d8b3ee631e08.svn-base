@@ -1,0 +1,168 @@
+//
+//  AppDelegate.m
+//  CommonProject
+//
+//  Created by mac on 2016/12/20.
+//  Copyright © 2016年 mac. All rights reserved.
+//
+
+#import "AppDelegate.h"
+#import "WXApi.h"
+#import <AlipaySDK/AlipaySDK.h>
+
+
+@interface AppDelegate ()<UITabBarControllerDelegate>
+{
+    UITabBarController *vc;
+}
+@end
+
+@implementation AppDelegate
+
+
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    // Override point for customization after application launch.
+    vc = (UITabBarController *)self.window.rootViewController;
+    vc.delegate = self;
+    [WXApi registerApp:@"wx1874aab2a58388ca" withDescription:@"任行app"];
+
+    return YES;
+}
+-(BOOL)tabBarController:(UITabBarController *)tabBarController shouldSelectViewController:(UIViewController *)viewController{
+    BOOL isLogin = [[NSUserDefaults standardUserDefaults]boolForKey:@"isrxlogin"];
+    UINavigationController *nav1 = (UINavigationController *)viewController;
+    if (!isLogin && [nav1.topViewController isKindOfClass:NSClassFromString(@"WodeViewController")]) {
+        BaseViewController *vcv = (BaseViewController *)[AppManager getVCInBoard:nil ID:@"LoginVc"];
+        UINavigationController *nav = vc.selectedViewController;
+        vcv.preObjvalue = @"appdelegate";
+        [nav pushViewController:vcv animated:YES];
+        return NO;
+        
+    }
+    //向微信注册wxd930ea5d5a258f4f
+//    [self test];
+    return YES;
+}
+-(void)test{
+    /// 总大小  
+    float totalsize = 0.0;  
+    /// 剩余大小  
+    float freesize = 0.0;  
+    /// 是否登录  
+    NSError *error = nil;  
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);  
+    NSDictionary *dictionary = [[NSFileManager defaultManager] attributesOfFileSystemForPath:[paths lastObject] error: &error];  
+    if (dictionary)  
+    {  
+        NSNumber *_free = [dictionary objectForKey:NSFileSystemFreeSize];  
+        freesize = [_free unsignedLongLongValue]*1.0/(1024);  
+        
+        NSNumber *_total = [dictionary objectForKey:NSFileSystemSize];  
+        totalsize = [_total unsignedLongLongValue]*1.0/(1024);  
+        
+        NSLog(@"%ld   %ld",[_free integerValue]/1024,[_total integerValue]/1024);
+    } else  
+    {  
+        NSLog(@"Error Obtaining System Memory Info: Domain = %@, Code = %ld", [error domain], (long)[error code]);  
+    }  
+}
+- (BOOL)application:(UIApplication *)application handleOpenURL:(NSURL *)url {
+    return  [WXApi handleOpenURL:url delegate:self.wxpayDelegate];
+}
+///ios 9.0以前的
+- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation {
+    //支付宝
+    {
+        if ([url.host isEqualToString:@"safepay"]) {
+            // 支付跳转支付宝钱包进行支付，处理支付结果
+            [[AlipaySDK defaultService] processOrderWithPaymentResult:url standbyCallback:^(NSDictionary *resultDic) {
+                //            NSLog(@"result = %@",resultDic);
+                [[NSNotificationCenter defaultCenter] postNotificationName:@"AliPayResultNotify" object:resultDic];
+            }];
+            
+            // 授权跳转支付宝钱包进行支付，处理支付结果
+            [[AlipaySDK defaultService] processAuth_V2Result:url standbyCallback:^(NSDictionary *resultDic) {
+                NSLog(@"result = %@",resultDic);
+                // 解析 auth code
+                NSString *result = resultDic[@"result"];
+                NSString *authCode = nil;
+                if (result.length>0) {
+                    NSArray *resultArr = [result componentsSeparatedByString:@"&"];
+                    for (NSString *subResult in resultArr) {
+                        if (subResult.length > 10 && [subResult hasPrefix:@"auth_code="]) {
+                            authCode = [subResult substringFromIndex:10];
+                            break;
+                        }
+                    }
+                }
+                NSLog(@"授权结果 authCode = %@", authCode?:@"");
+            }];
+        }
+    }
+
+    
+    return [WXApi handleOpenURL:url delegate:self.wxpayDelegate];
+}
+///ios 9.0以后可用
+- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options{
+    //支付宝
+    {
+        if ([url.host isEqualToString:@"safepay"]) {
+            // 支付跳转支付宝钱包进行支付，处理支付结果
+            [[AlipaySDK defaultService] processOrderWithPaymentResult:url standbyCallback:^(NSDictionary *resultDic) {
+                //            NSLog(@"result = %@",resultDic);
+                [[NSNotificationCenter defaultCenter] postNotificationName:@"AliPayResultNotify" object:resultDic];
+            }];
+            
+            // 授权跳转支付宝钱包进行支付，处理支付结果
+            [[AlipaySDK defaultService] processAuth_V2Result:url standbyCallback:^(NSDictionary *resultDic) {
+                NSLog(@"result = %@",resultDic);
+                // 解析 auth code
+                NSString *result = resultDic[@"result"];
+                NSString *authCode = nil;
+                if (result.length>0) {
+                    NSArray *resultArr = [result componentsSeparatedByString:@"&"];
+                    for (NSString *subResult in resultArr) {
+                        if (subResult.length > 10 && [subResult hasPrefix:@"auth_code="]) {
+                            authCode = [subResult substringFromIndex:10];
+                            break;
+                        }
+                    }
+                }
+                NSLog(@"授权结果 authCode = %@", authCode?:@"");
+            }];
+        }
+    }
+    //微信
+    return [WXApi handleOpenURL:url delegate:self.wxpayDelegate];
+    return YES;
+}
+
+- (void)applicationWillResignActive:(UIApplication *)application {
+    // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
+    // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.
+}
+
+
+- (void)applicationDidEnterBackground:(UIApplication *)application {
+    // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
+    // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+}
+
+
+- (void)applicationWillEnterForeground:(UIApplication *)application {
+    // Called as part of the transition from the background to the active state; here you can undo many of the changes made on entering the background.
+}
+
+
+- (void)applicationDidBecomeActive:(UIApplication *)application {
+    // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+}
+
+
+- (void)applicationWillTerminate:(UIApplication *)application {
+    // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
+}
+
+
+@end

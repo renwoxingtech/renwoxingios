@@ -1,0 +1,86 @@
+//
+//  ChoosePerson.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/9.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "ChoosePerson.h"
+#import "AddPersonVc.h"
+
+@implementation ChengCheren
+
+
+
+@end
+
+@interface ChoosePerson ()
+
+@end
+
+@implementation ChoosePerson
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"常用联系人";
+}
+-(void)loadNetData{
+    
+    NSString *utk = UToken;
+    if (!utk) {
+        return;
+    }
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken}] andUrl:@"Action/userContacts/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        [self.mainDataSource removeAllObjects];
+        
+        [self.mainDataSource addObjectsFromArray:obj[@"data"]];
+        [self.mainTableView reloadData];
+        
+    } andError:nil];
+}
+-(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    return self.mainDataSource.count;
+}
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    static NSString *resue = @"person";
+    ChengCheren *cell = [tableView dequeueReusableCellWithIdentifier:resue];
+    if (!cell) {
+        cell = [[ChengCheren alloc]initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:resue];
+    }
+    cell.backgroundColor = [UIColor clearColor];
+    NSDictionary *dic = self.mainDataSource[indexPath.row];
+    
+    cell.name.text = dic[@"name"]; 
+    cell.zjlx.text = dic[@"id_number"]; 
+    NSInteger tt =  [dic[@"type"] integerValue];
+    
+    cell.cktype.text = tt==1?@"成人":@"儿童";
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    
+    return cell;
+}
+-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    NSDictionary *dic = self.mainDataSource[indexPath.row];
+    AddPersonVc *vc = (AddPersonVc *)[self getVCInBoard:nil ID:@"AddPersonVc"];
+    vc.isLook = YES;
+    vc.preObjvalue = dic;
+    vc.touchEvent = ^(id value){
+        [self loadNetData];
+        
+    };
+    PUSH(vc);
+    
+}
+
+
+- (IBAction)addconAct:(UIButton *)sender {
+    AddPersonVc *vc = (AddPersonVc *)[self getVCInBoard:nil ID:@"AddPersonVc"];
+
+    vc.touchEvent = ^(id value){
+        [self loadNetData];
+        
+    };
+    PUSH(vc);
+}
+@end

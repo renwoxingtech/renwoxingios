@@ -1,0 +1,276 @@
+//
+//  DZXZVc.m
+//  CommonProject
+//
+//  Created by gaoguangxiao on 2017/1/7.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "DZXZVc.h"
+#import "LDCalendarView.h"
+#import "NSDate+extend.h"
+#import "SearchResVc.h"
+#import "ChooseDateViewController.h"
+#import "ChooseSeatTypeVc.h"
+
+@interface DZXZVc ()
+{
+    TrainStation *chufadiSt;
+    TrainStation *mudidiSt;
+
+    NSMutableArray <Customer *>*selectedCustomer;
+    NSMutableArray <DateObject *>*selectedDate;
+    NSMutableArray <SeatType *>*selectedType;
+
+    NSMutableArray *selectedCheci;
+
+    NSString *train_date;
+    
+}
+@property (nonatomic,assign)BOOL issingle;//是否是单选
+
+
+
+@end
+
+@implementation DZXZVc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = self.preObjvalue;
+    
+    self.navBar.hidden = NO;
+    selectedCustomer = [NSMutableArray array];
+    selectedDate = [NSMutableArray array];
+    selectedCheci = [NSMutableArray array];
+    selectedType = [NSMutableArray array];
+    if (self.from == 1 || self.from==2 || self.from==3) {
+        self.issingle = YES;
+    }
+    
+    [self initStation];
+    
+    [self.stationArr enumerateObjectsUsingBlock:^(TrainStation * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if ([obj.name isEqualToString:@"北京"]) {
+            chufadiSt = obj;
+        } 
+        if ([obj.name isEqualToString:@"上海"]) {
+            mudidiSt = obj;
+        } 
+    }];
+
+    [self.xiayibu addTarget:self action:@selector(nextStep:) forControlEvents:UIControlEventTouchUpInside];
+    
+    [self setStaionTtile];
+    self.chengkeView.height = 0;
+    [self updateChengkeView];
+}
+-(void)updateChengkeView{
+    CGFloat height = selectedCustomer.count*47;
+    self.chengkeView.height = height;
+    NSInteger index= 100 ;
+    for (Customer *cus in selectedCustomer) {
+        UIView *view = [self.chengkeView viewWithTag:index];
+        UILabel *l1 = [view viewWithTag:10];
+        l1.text = cus.name;
+        UILabel *l2 = [view viewWithTag:11];
+        l2.text = cus.type_name;
+        UILabel *l3 = [view viewWithTag:12];
+        l3.text = cus.id_number;
+
+        
+        
+        
+        index+=1;
+    }
+    CGFloat hh = self.chengkeView.bottom + 100;
+    if (hh<=SHEIGHT) {
+        hh=SHEIGHT+1;
+    }
+    self.bgScrollView.contentSize = CGSizeMake(SWIDTH, hh);
+    self.xiayibu.top = self.chengkeView.bottom+30;
+    
+}
+- (void)showDate {
+    NSMutableString *str = [NSMutableString string];
+    DateObject *oobj = selectedDate.firstObject;
+    train_date = oobj.originalStr;
+    
+    for (DateObject *date in selectedDate) {
+        
+        [str appendFormat:@"%@,",date.originalStr];
+    }
+    [self.riqiBtn setTitle:str forState:UIControlStateNormal];
+    
+}
+-(void)showSeattype{
+    NSMutableString *str = [NSMutableString string];
+
+    for (SeatType *type in selectedType) {
+        
+        [str appendFormat:@"%@,",type.name];
+    }
+    [self.leixing setTitle:str forState:UIControlStateNormal];
+}
+-(void)showCheci{
+    NSMutableString *str = [NSMutableString string];
+    
+    for (CheCiRes *checi in selectedCheci) {
+        
+        [str appendFormat:@"%@ ,",checi.train_code];
+    }
+    [self.checiBtn setTitle:str forState:UIControlStateNormal];
+}
+- (IBAction)mudidi:(UIButton *)sender {
+    BaseViewController *vc = (BaseViewController *)[self getVCInBoard:nil ID:@"ChoeseStationVC"];
+    vc.touchEvent = ^(id value){
+        TrainStation *st = value;
+        mudidiSt = st;
+        
+        [sender setTitle:st.name forState:UIControlStateNormal];
+        NSLog(@"选择了:%@",st.name);
+    };
+    PUSH(vc);
+}
+- (IBAction)chufaact:(UIButton *)sender {
+    BaseViewController *vc = (BaseViewController *)[self getVCInBoard:nil ID:@"ChoeseStationVC"];
+    vc.touchEvent = ^(id value){
+        TrainStation *st = value;
+        chufadiSt = st;
+        
+        [sender setTitle:st.name forState:UIControlStateNormal];
+        NSLog(@"选择了:%@",st.name);
+    };
+    PUSH(vc);
+}
+-(void)setStaionTtile{
+    [_chufadi setTitle:chufadiSt.name forState:UIControlStateNormal];
+    [_mudidi setTitle:mudidiSt.name forState:UIControlStateNormal];
+}
+- (IBAction)qiehuan:(UIButton *)sender {
+    TrainStation *st = chufadiSt;
+    chufadiSt = mudidiSt;
+    mudidiSt = st;
+    [self setStaionTtile];
+   
+}
+- (IBAction)riqi:(UIButton *)sender {
+    ChooseDateViewController *vc = (ChooseDateViewController *)[self getVCInBoard:nil ID:@"ChooseDateViewController"];
+    vc.preObjvalue = selectedDate; 
+    vc.issingle = self.issingle;
+    
+    __weak typeof(self) weakSelf = self;
+    vc.touchEvent = ^(id value){
+        if ([value isKindOfClass:[NSArray class]]) {
+            selectedDate = value;
+            [weakSelf showDate];
+        }  
+    };
+
+    PUSH(vc);
+}
+#pragma mark - 选择车次
+- (IBAction)checi:(UIButton *)sender {
+    SearchResVc *vc = (SearchResVc *)[self getVCInBoard:nil ID:@"SearchResVc"];
+    __weak typeof(self) weakSelf = self;
+    vc.isFromDZ = YES;
+    if (!train_date) {
+        train_date = [AppManager getCurrentTimeStrWithformat:@"yyyy-MM-dd"];
+    }
+    vc.preObjvalue = @[chufadiSt,mudidiSt,train_date];
+    vc.issingle = self.issingle;
+    vc.issingle = YES;
+    
+    vc.touchEvent = ^(id value){
+        if ([value isKindOfClass:[NSArray class]]) {
+            selectedCheci = value;
+            [weakSelf showCheci];
+        }  
+    };
+    
+    PUSH(vc);
+}
+- (IBAction)leixing:(UIButton *)sender {
+    ChooseSeatTypeVc *vc = (ChooseSeatTypeVc *)[self getVCInBoard:nil ID:@"ChooseSeatTypeVc"];
+    vc.preObjvalue = selectedType;
+    vc.issingle = self.issingle;
+
+    __weak typeof(self) weakSelf = self;
+    vc.touchEvent = ^(id value){
+        if ([value isKindOfClass:[NSArray class]]) {
+            selectedType = value;
+            [weakSelf showSeattype];
+        }  
+    };
+    PUSH(vc);
+}
+- (IBAction)tianjiack:(UIButton *)sender {
+    BaseViewController *vc = (BaseViewController *)[self getVCInBoard:nil ID:@"ChoosePerson"];
+    vc.preObjvalue = selectedCustomer;
+    __weak typeof(self) weakSelf = self;
+    vc.touchEvent = ^(id value){
+        if ([value isKindOfClass:[NSArray class]]) {
+            selectedCustomer = value;
+            [weakSelf updateChengkeView];
+        }  
+    };
+    PUSH(vc);
+}
+
+
+- (IBAction)delete:(UIButton *)sender {
+    NSInteger index = sender.superview.tag - 100;
+    if (index<selectedCustomer.count) {
+        [selectedCustomer removeObjectAtIndex:index];
+        [self updateChengkeView];
+    }
+}
+-(void)nextStep:(UIButton *)btn{
+    //测试
+    CheCiRes *res = [[CheCiRes alloc]init];
+    res.train_code = @"G20";
+    
+    [selectedCheci addObject:res];
+    
+    
+    if (!chufadiSt) {
+        return;
+    }
+    if (!mudidiSt) {
+        return;
+    }
+    if (selectedDate.count<1) {
+        [LoadingView showAMessage:@"请选择乘车时间"];
+        return;
+    }
+    if (selectedCheci.count<1) {
+        [LoadingView showAMessage:@"请选择车次"];
+        return;
+    }
+
+    if (selectedType.count<1) {
+        [LoadingView showAMessage:@"请选择坐席类型"];
+        return;
+    }
+    if (selectedCustomer.count<1) {
+        [LoadingView showAMessage:@"请选择乘客"];
+        return;
+    }
+    
+    if ([btn.currentTitle isEqualToString:@"下一步(选座)"]) {
+       
+        BaseViewController *vc = (BaseViewController *)[self getVCInBoard:nil ID:@"SubmitOrderVc"];
+        vc.title = @"选择座位";
+        __weak typeof(self) weakSelf = self;
+        vc.preObjvalue = @[chufadiSt,mudidiSt,train_date,selectedCheci.firstObject,selectedType.firstObject,selectedCustomer];
+        vc.touchEvent = ^(id value){
+            if ([value isKindOfClass:[NSArray class]]) {
+                selectedType = value;
+                [weakSelf showSeattype];
+            }  
+        };
+        PUSH(vc);
+    }
+    
+}
+@end

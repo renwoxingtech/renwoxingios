@@ -1,0 +1,95 @@
+//
+//  DataModel.h
+//  CommonProject
+//
+//  Created by mac on 2016/12/27.
+//  Copyright © 2016年 mac. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+
+
+@interface DataModel : NSObject
+
+@end
+
+@interface TrainStation : DataModel
+@property (nonatomic,copy)NSString *code;
+@property (nonatomic,copy)NSString *name;
+@property (nonatomic,copy)NSString *szm;
+@property (nonatomic,copy)NSString *pinyin;
+
+
+@end
+
+
+@interface CheCiRes : DataModel
+@property(nonatomic,retain) NSArray *zuoweiNumArr;
+@property(nonatomic,retain) NSArray *zuoweiPirceArr;
+
+@property(nonatomic,retain) NSString *train_no;
+@property(nonatomic,retain) NSString *arrive_days;
+@property(nonatomic,retain) NSString *arrive_time;
+@property(nonatomic,retain) NSString *ydz_num;
+@property(nonatomic,retain) NSString *train_code;
+@property(nonatomic,retain) NSString *start_station_name;
+@property(nonatomic,retain) NSString *ydz_price;
+@property(nonatomic,retain) NSString *yz_num;
+@property(nonatomic,retain) NSString *gjrw_price;
+@property(nonatomic,retain) NSString *tdz_price;
+@property(nonatomic,retain) NSString *wz_price;
+@property(nonatomic,retain) NSString *gjrw_num;
+@property(nonatomic,retain) NSString *to_station_code;
+@property(nonatomic,retain) NSString *from_station_code;
+@property(nonatomic,retain) NSString *rz_num;
+@property(nonatomic,retain) NSString *run_time_minute;
+@property(nonatomic,retain) NSString *ywx_price;
+@property(nonatomic,retain) NSString *edz_price;
+@property(nonatomic,retain) NSString *tdz_num;
+@property(nonatomic,retain) NSString *rw_price;
+@property(nonatomic,retain) NSString *rz_price;
+@property(nonatomic,retain) NSString *sale_date_time;
+@property(nonatomic,retain) NSString *run_time;
+@property(nonatomic,retain) NSString *distance;
+@property(nonatomic,retain) NSString *edz_num;
+@property(nonatomic,retain) NSString *to_station_name;
+@property(nonatomic,retain) NSString *ywz_price;
+@property(nonatomic,retain) NSString *yw_num;
+@property(nonatomic,retain) NSString *can_buy_now;
+@property(nonatomic,retain) NSString *yw_price;
+@property(nonatomic,retain) NSString *yz_price;
+@property(nonatomic,retain) NSString *gjrws_price;
+@property(nonatomic,retain) NSString *qtxb_price;
+@property(nonatomic,retain) NSString *rwx_price;
+@property(nonatomic,retain) NSString *access_byidcard;
+@property(nonatomic,retain) NSString *from_station_name;
+@property(nonatomic,retain) NSString *start_time;
+@property(nonatomic,retain) NSString *end_station_name;
+@property(nonatomic,retain) NSString *rw_num;
+@property(nonatomic,retain) NSString *train_type;
+@property(nonatomic,retain) NSString *wz_num;
+@property(nonatomic,retain) NSString *qtxb_num;
+@property(nonatomic,retain) NSString *swz_price;
+@property(nonatomic,retain) NSString *swz_num;
+@property(nonatomic,retain) NSString *train_start_date;
+
+
+@end
+
+
+@interface UserInfo  : DataModel
+@property(nonatomic,retain) NSString *take_province;
+@property(nonatomic,retain) NSString *take_county;
+@property(nonatomic,retain) NSString *phone;
+@property(nonatomic,retain) NSString *take_uname;
+@property(nonatomic,retain) NSString *take_city;
+@property(nonatomic,retain) NSString *take_address;
+@property(nonatomic,retain) NSString *balance;
+@property(nonatomic,retain) NSString *take_phone;
+@property(nonatomic,retain) NSString *income;
+@property(nonatomic,retain) NSString *regtime;
+@property(nonatomic,retain) NSString *account;
+@property(nonatomic,retain) NSString *take_pcc;
+
+@end

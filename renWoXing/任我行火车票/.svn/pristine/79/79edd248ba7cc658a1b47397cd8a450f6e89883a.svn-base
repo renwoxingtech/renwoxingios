@@ -1,0 +1,143 @@
+//
+//  WodeViewController.m
+//  CommonProject
+//
+//  Created by gaoguangxiao on 2017/1/8.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "WodeViewController.h"
+#import "CBAlertView.h"
+#import "LoginVc.h"
+#import "NormalOrderVc.h"
+
+@interface WodeViewController ()
+
+@end
+
+@implementation WodeViewController
+- (IBAction)denglu12306:(UIButton *)sender {
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"is12306login"]){
+        [self login123];
+        
+        return;
+        
+    }
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:nil message:nil preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *act1 = [UIAlertAction actionWithTitle:@"退出登录" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        [sender setTitle:@"未登录" forState:UIControlStateNormal];
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"zh12306"];
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"mm12306"];
+        [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"is12306login"];
+
+    }];
+    [alert addAction:act1];
+    UIAlertAction *act2 = [UIAlertAction actionWithTitle:@"切换账号" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        [self login123];
+    }];
+    [alert addAction:act2];
+    UIAlertAction *act3 = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        
+    }];
+    [alert addAction:act3];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+-(void)login123{
+    LoginVc *vcv = (LoginVc *)[AppManager getVCInBoard:nil ID:@"LoginVc"];
+    vcv.preObjvalue=@1;
+    vcv.is12306 = YES;
+    
+    vcv.touchEvent = ^(id value){
+        if ([value isKindOfClass:NSString.class]) {
+            
+            [self.name12306 setTitle:value forState:UIControlStateNormal] ;
+        }  
+    };
+    PUSH(vcv);
+}
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view.
+    self.navBar.hidden = YES;
+    self.navigationController.navigationBar.hidden = YES;
+    
+    NSString *zh = [[NSUserDefaults standardUserDefaults] objectForKey:@"zh12306"];
+    
+    [self.name12306 setTitle:zh forState:UIControlStateNormal] ;
+
+    //使scrollview可以上下滑动
+    [self.view.subviews enumerateObjectsUsingBlock:^(__kindof UIView * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if ([obj isKindOfClass:[UIScrollView class]] && ![obj isKindOfClass:[UITableView class]]) {
+            UIScrollView *sc = obj;
+            UIView *v = sc.subviews.lastObject;
+            CGFloat h = v.bottom+10+69;
+            if (h<sc.height) {
+                h = sc.height+1;
+            }
+            sc.contentSize = CGSizeMake(sc.width, h);
+        }
+    }];
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"is12306login"]){
+        
+    }else{
+        [self.name12306 setTitle:@"未登录" forState:UIControlStateNormal];
+
+    }
+    _name.text = @"未登录";
+    _phone.text = @"";
+}
+-(void)viewWillAppear:(BOOL)animated{
+    [super viewWillAppear:animated];
+    
+    [self loadNetData2];
+    
+
+}
+-(void)loadNetData2{
+    if (!UToken) {
+        return;
+    }
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken}] andUrl:@"Action/userInfo/" showLoading:NO showMsg:NO isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue] == 1) {
+           [ [NSUserDefaults standardUserDefaults]setObject:obj[@"data"][@"balance"] forKey:@"ubalance"];
+            [ [NSUserDefaults standardUserDefaults]setObject:obj[@"data"][@"id"] forKey:@"userid"];
+
+            [self updateWithInfo:obj];
+        }
+    } andError:^(id error) {
+        
+    }];
+}
+-(void)updateWithInfo:(NSDictionary *)dic{
+    [[NSUserDefaults standardUserDefaults] setObject:dic[@"data"] forKey:@"userInfo"];
+    UserInfo *info = [UserInfo mj_objectWithKeyValues:dic[@"data"]];
+    if (!info) {
+        
+        
+        return;
+    }
+    _name.text = info.account;
+    _phone.text = info.phone;
+    
+}
+
+-(IBAction)call:(id)sender{
+    NSString *tel = @"4008925515";
+    NSString *uul = [NSString stringWithFormat:@"tel://%@",tel];
+    
+    CBAlertView *vv = [[CBAlertView alloc]initWithTitle:@"拨打客服电话" actionsTitles:@[tel] imgnames:nil showCancel:YES showSure:NO event:^(id value) {
+        [[UIApplication sharedApplication] openURL:[NSURL URLWithString:uul]];
+        
+        
+    }];
+}
+
+
+
+- (IBAction)qpdd:(UIButton *)sender {
+    NormalOrderVc *vc = (NormalOrderVc *)[self getVCInBoard:@"Main" ID:@"NormalOrderVc"];
+    vc.isQpdd = YES;
+    
+    PUSH(vc);
+}
+@end

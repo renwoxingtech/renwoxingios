@@ -1,0 +1,76 @@
+//
+//  WodeViewController.m
+//  CommonProject
+//
+//  Created by gaoguangxiao on 2017/1/8.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "WodeViewController.h"
+#import "CBAlertView.h"
+
+@interface WodeViewController ()
+
+@end
+
+@implementation WodeViewController
+- (IBAction)denglu12306:(UIButton *)sender {
+    BaseViewController *vcv = (BaseViewController *)[AppManager getVCInBoard:nil ID:@"LoginVc"];
+    vcv.preObjvalue=@1;
+    vcv.touchEvent = ^(id value){
+        if ([value isKindOfClass:NSString.class]) {
+            [self.name12306 setTitle:value forState:UIControlStateNormal] ;
+        }  
+    };
+    PUSH(vcv);
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view.
+    self.navBar.hidden = YES;
+    //使scrollview可以上下滑动
+    [self.view.subviews enumerateObjectsUsingBlock:^(__kindof UIView * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if ([obj isKindOfClass:[UIScrollView class]] && ![obj isKindOfClass:[UITableView class]]) {
+            UIScrollView *sc = obj;
+            UIView *v = sc.subviews.lastObject;
+            CGFloat h = v.bottom+10+69;
+            if (h<sc.height) {
+                h = sc.height+1;
+            }
+            sc.contentSize = CGSizeMake(sc.width, h);
+        }
+    }];
+
+}
+-(void)loadNetData{
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken}] andUrl:@"Action/userInfo/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue] == 1) {
+            [self updateWithInfo:obj];
+        }
+    } andError:nil];
+}
+-(void)updateWithInfo:(NSDictionary *)dic{
+    UserInfo *info = [UserInfo mj_objectWithKeyValues:dic[@"data"]];
+    if (!info) {
+        
+        
+        return;
+    }
+    _name.text = info.account;
+    _phone.text = info.phone;
+    
+}
+
+-(IBAction)call:(id)sender{
+    CBAlertView *vv = [[CBAlertView alloc]initWithTitle:@"拨打客服电话" actionsTitles:@[@"843131313"] imgnames:nil showCancel:YES showSure:NO event:^(id value) {
+        [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"tel://843131313"] options:@{} completionHandler:^(BOOL success) {
+            
+            [vv removeFromSuperview];
+        }];
+    }];
+}
+
+
+
+@end

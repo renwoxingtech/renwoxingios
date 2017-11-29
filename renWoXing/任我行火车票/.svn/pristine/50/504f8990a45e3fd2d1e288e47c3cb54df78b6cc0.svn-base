@@ -1,0 +1,348 @@
+//
+//  ChoosePerson.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/9.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "ChoosePerson.h"
+#import "AddPersonVc.h"
+#import "NSBase64.h"
+#import "SubmitOrderVc.h"
+#import "LoginVc.h"
+
+
+#import "NSString+Encryption.h"
+
+@implementation ChengCheren
+
+
+@end
+
+@interface ChoosePerson ()
+{
+    NSMutableArray *choosedCustomer;
+    
+}
+
+@end
+
+@implementation ChoosePerson
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    if (self.preObjvalue) {
+        self.title = @"选择乘客";
+    }else
+    self.title = @"常用乘车人";
+    choosedCustomer = [NSMutableArray array];
+    NSString *zh = [[NSUserDefaults standardUserDefaults] objectForKey:@"zh12306"];
+    [self.zhanghaoBtn setTitle:zh forState:UIControlStateNormal];
+    
+}
+-(void)goDingdanSure{
+    if (self.ischoose12306) {
+        POP;
+        return;
+    }
+    if (choosedCustomer.count<=0) {
+        [LoadingView showAMessage:@"请选择乘客"];
+        
+        return;
+    }else{
+        if (!self.preObjvalue) {
+            [LoadingView showAMessage:@"请返回重新选择车次"];
+            return;
+        }
+        SubmitOrderVc *vc = (SubmitOrderVc *)[self getVCInBoard:nil ID:@"SubmitOrderVc"];
+        vc.preObjvalue = self.preObjvalue;
+        vc.is12306dingpiao = YES;
+        vc.title = @"12306提交订单";
+        PUSH(vc);
+    }
+}
+//DES加密  
+-(void)get12306Customer{
+    NSString *LoginUserName = [[NSUserDefaults standardUserDefaults] objectForKey:@"zh12306"];
+    NSString *LoginUserPassword = [[NSUserDefaults standardUserDefaults] objectForKey:@"mm12306"];
+    NSDictionary *account = @{@"trainAccount":LoginUserName,@"pass":LoginUserPassword};
+    
+    
+    NSString *desSTr = [[account mj_JSONString] desEncryptWithKey:HTDESKEY];
+    [AppManager logJsonStr:account];
+  
+    NSString *posturl = [NSString stringWithFormat:@"http://trainorder.ws.hangtian123.com/cn_interface/trainAccount/contact/query"];
+   
+    desSTr = @"39HSEPWjm5doX6jaYmdJWNEbaitEEqw8twyvdt_YlnjeAhxb6LAwvNEbaitEEqw8-6ieEbXANRXlWNeq_n4SvA";
+    NSString *postPar = [@{@"data":desSTr,@"accountversion":@"2"} mj_JSONString];
+
+    
+    
+    
+    [LoadingView showLoading];
+    [[NetRequest shareRequest] requestWithUrl:posturl parameters:postPar isJsonpar:YES isPost:YES andComplain:^(id obj) {
+        if (!obj[@"data"]) {
+            [LoadingView showAMessage:@"加载失败"];
+            return ;
+        }
+        NSString *fileName = [NSString stringWithFormat:@"%@.txt",[AppManager getCurrentTimeStrWithformat:@"yyyy-MM-dd hh:mm:ss"]];
+        fileName =  [fileName stringByReplacingOccurrencesOfString:@" " withString:@""];
+        
+        fileName = [NSString stringWithFormat:@"%.0f%d%d%d%d.txt",[[NSDate date] timeIntervalSince1970],arc4random()%10,arc4random()%10,arc4random()%10,arc4random()%10];
+        
+        NSDictionary *dic2 = @{@"data":obj[@"data"],@"key":HTDESKEY,@"myfile":fileName};
+        [[Httprequest shareRequest] postObjectByParameters:dic2 andUrl:[NSString stringWithFormat:@"%@/java/input.php",@"http://dygqp.test.yikeapp.cn"] showLoading:NO showMsg:NO isFullUrk:YES andComplain:^(id obj) {
+            NSLog(@"");
+            if (obj[@"a"]) {
+                NSDictionary *ddd = obj[@"a"];
+                NSLog(@"%@",[ddd mj_JSONString]);
+                
+                self.mainDataSource = [Customer mj_objectArrayWithKeyValuesArray:obj[@"a"]];
+                [self formatData:obj[@"a"]];
+                
+                
+            }
+        } andError:^(id error) {
+            NSLog(@"%@",error);
+        }];
+
+    } andError:^(id error) {
+        
+    }];
+//    return;
+
+//    [self formatData:nil];
+
+//    [[Httprequest shareRequest] postObjectByParameters:postPar andUrl:posturl showLoading:YES showMsg:YES isFullUrk:YES andComplain:^(id obj) {
+//        NSLog(@"");
+//                
+//        
+//    } andError:nil];
+    
+    
+    
+}
+-(void)formatData:(NSArray *)arr{
+    BOOL istest = NO;
+    
+        NSArray *person = @[@{@"birthday":@"1979-11-17",@"sex":@1,@"phone":@"",@"identy":@"230128197911173460",@"tel":@"",@"identyType":@"1",@"country":@"CN",@"id":@"986577322",@"checkStatus":@0,@"address":@"",@"email":@"",@"name":@"刘海霞",@"isUserSelf":@1,@"personType":@0}];
+    if (istest) {
+        
+        self.mainDataSource = [Customer mj_objectArrayWithKeyValuesArray:person];
+        arr = person;
+    }
+    
+    
+    [self.mainDataSource enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        Customer *cus = obj;
+        cus.person_id = arr[idx][@"id"];
+        cus.passengerid = cus.person_id;
+
+        if ([cus.identyType isEqualToString:@"1"]) {
+            cus.id_name = @"身份证";
+            cus.id_type = 1;
+        }else  if ([cus.identyType isEqualToString:@"C"]) {
+            cus.id_name = @"港澳通行证";
+            cus.id_type = 2;
+            
+        }else  if ([cus.identyType isEqualToString:@"G"]) {
+            cus.id_name = @"台湾通行证";
+            cus.id_type = 3;
+            
+        }else  if ([cus.identyType isEqualToString:@"B"]) {
+            cus.id_name = @"护照";
+            cus.id_type = 4;
+            
+        }
+        NSInteger tt =  [cus.personType integerValue];
+        if (tt==0) {
+            cus.type_name = @"成人";
+        }
+        if (tt==1) {
+            cus.type_name = @"儿童";
+        }
+        if (tt==2) {
+            cus.type_name = @"学生";
+        }
+        
+        
+        cus.id_number = cus.identy;
+        
+    }];
+    [self.mainTableView reloadData];
+
+}
+#pragma mark - 获取任行乘客
+-(void)loadNetData{
+    if (self.ischoose12306) {
+//        UIBarButtonItem *item = [[UIBarButtonItem alloc]initWithTitle:@"确定" style:UIBarButtonItemStylePlain target:self action:@selector(goDingdanSure)];
+//        self.navItem.rightBarButtonItem = item;
+//        
+        [self get12306Customer];
+        
+        return;
+    }
+  
+    NSString *utk = UToken;
+    if (!utk) {
+        return;
+    }
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken}] andUrl:@"Action/userContacts/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        [self.mainDataSource removeAllObjects];
+        self.mainDataSource = [Customer mj_objectArrayWithKeyValuesArray:obj[@"data"]];
+        NSArray *orgData= obj[@"data"];
+        [self.mainDataSource enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+            Customer *cus = obj;
+            NSInteger tt =  cus.type;
+            @try {
+                cus.person_id = orgData[idx][@"id"];
+            } @catch (NSException *exception) {
+                cus.person_id = @"0";
+            } @finally {
+                
+            }
+            cus.isSelect = NO;
+            cus.type_name = tt==1?@"成人":@"儿童";
+            
+        }];
+        
+        [self.mainTableView reloadData];
+        
+    } andError:nil];
+}
+-(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    return self.mainDataSource.count;
+}
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    static NSString *resue = @"person";
+    ChengCheren *cell = [tableView dequeueReusableCellWithIdentifier:resue];
+    if (!cell) {
+        cell = [[ChengCheren alloc]initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:resue];
+    }
+    cell.backgroundColor = [UIColor clearColor];
+    
+    
+    Customer *customer = self.mainDataSource[indexPath.row];
+    
+    cell.name.text = customer.name;
+
+        cell.zjlx.text = customer.id_number;
+        cell.cktype.text = customer.type_name;
+  
+    
+    
+    if (self.preObjvalue) {
+        cell.choose.hidden = NO;
+    }
+    cell.choose.selected = customer.isSelect;
+    [cell.choose addTarget:self action:@selector(choosePerson:) forControlEvents:UIControlEventTouchUpInside];
+    
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    
+    return cell;
+}
+-(void)choosePerson:(UIButton *)btn{
+    UITableViewCell *cell = (UITableViewCell *)btn.superview.superview;
+    NSIndexPath *indexPath = [self.mainTableView indexPathForCell:cell];
+    
+    Customer *cust = self.mainDataSource[indexPath.row];
+    
+    if (choosedCustomer.count>=5) {
+        return;
+    }else cust.isSelect = !cust.isSelect;
+    
+    btn.selected = !btn.selected;
+    [choosedCustomer removeAllObjects];
+    [self.mainDataSource enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        Customer *cus = obj;
+        if (cus.isSelect) {
+            [choosedCustomer addObject:cus];
+        }
+    } ];
+    if (self.touchEvent) {
+        self.touchEvent(choosedCustomer);
+        
+    }
+    
+}
+-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    
+    Customer *cust = self.mainDataSource[indexPath.row];
+    if (self.ischoose12306 || self.ischooserx) {
+//        cust.isSelect = !cust.isSelect;
+//        [self.mainTableView reloadData];
+//        [choosedCustomer removeAllObjects];
+//        
+//        for (Customer *ccc in self.mainDataSource) {
+//            if (ccc.isSelect) {
+//                [choosedCustomer addObject:ccc];
+//            }
+//        }
+        return;
+    }
+    AddPersonVc *vc = (AddPersonVc *)[self getVCInBoard:nil ID:@"AddPersonVc"];
+    vc.isLook = YES;
+    vc.preObjvalue =cust;
+    vc.touchEvent = ^(id value){
+        [self loadNetData];
+        
+    };
+    PUSH(vc);
+    
+}
+
+
+- (IBAction)addconAct:(UIButton *)sender {
+    AddPersonVc *vc = (AddPersonVc *)[self getVCInBoard:nil ID:@"AddPersonVc"];
+
+    vc.touchEvent = ^(id value){
+        [self loadNetData];
+        
+    };
+    PUSH(vc);
+}
+- (IBAction)zhact:(UIButton *)sender {
+    [self denglu12306:sender];
+    
+}
+- (IBAction)denglu12306:(UIButton *)sender {
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"is12306login"]){
+        [self login123:sender];
+        
+        return;
+        
+    }
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:nil message:nil preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *act1 = [UIAlertAction actionWithTitle:@"退出登录" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        [sender setTitle:@"未登录" forState:UIControlStateNormal];
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"zh12306"];
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"mm12306"];
+        [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"is12306login"];
+        
+    }];
+    [alert addAction:act1];
+    UIAlertAction *act2 = [UIAlertAction actionWithTitle:@"切换账号" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        [self login123:sender];
+    }];
+    [alert addAction:act2];
+    UIAlertAction *act3 = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        
+    }];
+    [alert addAction:act3];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+-(void)login123:(UIButton *)btn{
+    LoginVc *vcv = (LoginVc *)[AppManager getVCInBoard:nil ID:@"LoginVc"];
+    vcv.preObjvalue=@1;
+    vcv.is12306 = YES;
+    
+    vcv.touchEvent = ^(id value){
+        if ([value isKindOfClass:NSString.class]) {
+            
+            [btn setTitle:value forState:UIControlStateNormal] ;
+        }  
+    };
+    PUSH(vcv);
+}
+@end

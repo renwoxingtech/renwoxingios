@@ -1,0 +1,275 @@
+//
+//  AddPersonVc.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/13.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "AddPersonVc.h"
+#import "CBAlertView.h"
+#import <UIButton+WebCache.h>
+
+@interface AddPersonVc ()
+{
+    NSData *choosedData;
+    UIImage *choosedImage;
+    NSString *card_url;
+    
+}
+@property (weak, nonatomic) IBOutlet UITextView *btmlab;
+
+@end
+
+@implementation AddPersonVc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"添加联系人";
+    UIBarButtonItem *item = [[UIBarButtonItem alloc]initWithTitle:@"确定" style:UIBarButtonItemStylePlain target:self action:@selector(sureChange)];
+    self.navItem.rightBarButtonItem = item;
+    [self.addimageBtn addTarget:self action:@selector(changeHeadIM:) forControlEvents:UIControlEventTouchUpInside];
+    self.addimageBtn.imageView.contentMode = UIViewContentModeScaleAspectFit;
+    self.addimageBtn.clipsToBounds = YES;
+    
+    
+    for (UIView *v  in self.view.subviews) {
+        [self.bgScrollView addSubview:v];
+    }
+    [self.view addSubview:self.bgScrollView];
+    if (!self.isLook) {
+        self.heyanlable.hidden = YES;
+        self.stateBtn.hidden = YES;
+        self.infolable.top = self.zhengjiannumfield.bottom;
+        self.bgView.height = self.infolable.bottom;
+        self.addimgBgview.top = self.bgView.bottom+15;
+        self.deleteBtn.hidden = YES;
+        self.shuoming.top = self.addimgBgview.bottom+10;
+        
+        
+    }else{
+        self.addimgBgview.hidden = NO;
+        self.addimgBgview.top = self.bgView.bottom+15;
+        self.deleteBtn.top  = self.addimgBgview.bottom+15;
+        self.shuoming.top = self.deleteBtn.bottom+10;
+        
+        Customer *cust = self.preObjvalue;
+        if ([cust isKindOfClass:[Customer class]]) {
+            card_url = cust.id_imgurl;
+            if ([card_url hasPrefix:@"/"]) {
+                
+                card_url = [card_url stringByReplacingOccurrencesOfString:@"/" withString:@""]; 
+            }
+            
+            NSString *uulStr = BASE_URL(cust.id_imgurl);
+            
+            [self.addimageBtn sd_setImageWithURL:[NSURL URLWithString:uulStr] forState:UIControlStateNormal placeholderImage:[UIImage imageNamed:@"shenfenzheng"]];
+            if (card_url) {
+                [self.addimageBtn setImage:nil forState:UIControlStateNormal];
+            }
+        self.namefield.text = cust.name; 
+        self.zhengjiannumfield.text = cust.id_number;         
+        [self.leixingBtn setTitle:cust.type_name forState:UIControlStateNormal] ;
+            
+            NSArray *arr = @[@"身份证",@"港澳通行证",@"台湾通行证",@"护照"];
+            NSInteger zjlx =cust.id_type-1;
+            
+            if (zjlx>arr.count-1) {
+                zjlx = arr.count-1;
+                
+            }
+            [self.zhengjianlxbtn setTitle:arr[zjlx] forState:UIControlStateNormal];
+
+        }
+    }
+    [self.shuoming sizeToFit];
+    
+    CGFloat h = self.shuoming.bottom;
+    if (h<SHEIGHT) {
+        h = SHEIGHT+1;
+    }
+    self.bgScrollView.contentSize = CGSizeMake(SWIDTH, h);
+}
+-(void)sureChange{
+    
+    if (_namefield.text.length<1) {
+        return;
+    }
+    if (_zhengjiannumfield.text.length<1) {
+        return;
+    }
+    
+    NSString *utk = UToken;
+    if (!utk) {
+        [LoadingView showAMessage:@"未登录"];
+        return;
+    }
+    
+//    UToken				*******			登录获取到的utoken
+//    name				张三   			乘车人姓名
+//    type				1/2  			1为成人；2为儿童
+//    ID_type				1/2/3/4			证件类型；1：身份证；2：港澳通信证；3：台湾通行证；4：护照
+//    ID_number			***  			证件号码；最长30位		
+//    ID_imgurl
+    NSString *type = [_leixingBtn.currentTitle isEqualToString:@"成人"]?@"1":@"2";
+    NSString *zjtype = @"1";
+    if ([_zhengjianlxbtn.currentTitle containsString:@"身份证"]) {
+        zjtype = @"1";
+    }else if ([_zhengjianlxbtn.currentTitle containsString:@"港澳通行证"]) {
+        zjtype = @"2";
+    }else if ([_zhengjianlxbtn.currentTitle containsString:@"台湾通行证"]) {
+        zjtype = @"3";
+    }else if ([_zhengjianlxbtn.currentTitle containsString:@"护照"]) {
+        zjtype = @"4";
+    }
+    NSString *personid = @"";
+    if (self.preObjvalue) {
+        Customer *obj = self.preObjvalue;
+        personid = obj.person_id;
+        
+        
+    }
+    if (!card_url) {
+        card_url = @"";
+    }
+    NSDictionary *dic = [self getparametersWithDic:@{@"UToken":UToken,@"name":_namefield.text,@"type":type ,@"ID_type":zjtype,@"ID_number":_zhengjiannumfield.text,@"id_imgurl":card_url}];
+    
+    if (self.preObjvalue) {
+        dic = [self getparametersWithDic:@{@"UToken":UToken,@"name":_namefield.text,@"type":type ,@"ID_type":zjtype,@"ID_number":_zhengjiannumfield.text,@"ID_imgurl":card_url?card_url:@" ",@"id":personid}];
+
+    }
+    [[Httprequest shareRequest] postObjectByParameters:dic andUrl:self.preObjvalue?@"Action/upUserContacts/":@"Action/addUserContacts/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue] == 1) {
+            [LoadingView showAMessage:@"操作成功"];
+            if (self.touchEvent) {
+                self.touchEvent(@"");
+                
+            }
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                POP;
+            });
+        }else{
+            [LoadingView showAMessage:obj[@"msg"]];
+
+        }
+    } andError:nil];
+    
+}
+
+- (IBAction)chengkeleixing:(UIButton *)sender {
+    [self.view endEditing:YES];
+    NSArray *arr = @[@"成人",@"儿童"];
+    CBAlertView *view = [[CBAlertView alloc]initWithTitle:@"乘客类型" actionsTitles:arr imgnames:nil showCancel:YES showSure:NO event:^(id value) {
+        [sender setTitle:arr[[value integerValue]] forState:UIControlStateNormal];
+        
+        
+    }];
+}
+- (IBAction)shenfenleixing:(UIButton *)sender {
+    
+    [self.view endEditing:YES];
+    NSArray *arr = @[@"身份证",@"港澳通行证",@"台湾通行证",@"护照"];
+    CBAlertView *view = [[CBAlertView alloc]initWithTitle:@"乘客类型" actionsTitles:arr imgnames:nil showCancel:YES showSure:NO event:^(id value) {
+        [sender setTitle:arr[[value integerValue]] forState:UIControlStateNormal];
+        
+        
+    }];
+    
+}
+- (IBAction)shanchuAct:(UIButton *)sender {
+    if (!self.preObjvalue) {
+        return;
+    }
+    Customer *cus = self.preObjvalue;
+    
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken,@"id":cus.person_id}] andUrl:@"Action/delUserContacts/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue] == 1) {
+            if (self.touchEvent) {
+                self.touchEvent(@"");
+                
+            }
+            [LoadingView showAMessage:@"删除成功"];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                POP;
+            });
+        }
+    } andError:nil];
+    
+}
+#pragma mark - 选取照片
+- (IBAction)changeHeadIM:(id)sender {
+    UIActionSheet *sheet = [[UIActionSheet alloc]initWithTitle:nil delegate:self cancelButtonTitle:@"取消" destructiveButtonTitle:nil otherButtonTitles:@"打开照相机", @"从手机相册获取", nil];
+    [sheet showInView:self.view];
+}
+
+
+#pragma mark - 选取照片
+- (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex
+{
+    UIImagePickerControllerSourceType sourceType = UIImagePickerControllerSourceTypeCamera;
+    switch (buttonIndex)
+    {
+        case 0:  //打开照相机拍照
+            if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+                UIImagePickerController *picker = [[UIImagePickerController alloc]init];
+                picker.delegate = self;
+                //拍照后的图片可以编辑
+                picker.allowsEditing = YES;
+                picker.sourceType = sourceType;
+                [self presentViewController:picker animated:YES completion:nil];
+            }
+            break;
+        case 1:  //打开本地相册
+            [self LocalPhoto];
+            break;
+    }
+}
+
+#pragma mark  选择相册中的照片
+- (void)LocalPhoto
+{
+    UIImagePickerController *picker = [[UIImagePickerController alloc]init];
+    picker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
+    picker.delegate = self;
+    //选择选中的图片可以编辑
+    picker.allowsEditing = YES;
+    [self presentViewController:picker animated:YES completion:nil];
+}
+
+#pragma mark 选择一张图片执行的函数
+- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary *)info
+{
+    NSString *type = [info objectForKey:UIImagePickerControllerMediaType];
+    
+    
+    if ([type isEqualToString:@"public.image"]) {
+        //先把图片转化为二进制
+        UIImage *image = [info objectForKey:@"UIImagePickerControllerEditedImage"];
+        NSData *data = UIImageJPEGRepresentation(image, 0.2);
+        [picker dismissViewControllerAnimated:YES completion:nil];
+        
+        choosedData = data;
+        choosedImage = image;
+        
+        [self changeHeadimg];
+        
+        
+    }
+}
+
+
+-(void)changeHeadimg{
+    //    person/changeHeadImg.action
+    //fileImage
+    [[Httprequest shareRequest] postImageByUrl:@"Index/upImg/" withParameters:nil andImageData:choosedData imageKey:@"fileImage" andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue]==1) {
+            card_url = obj[@"data"][@"filePath"];
+            [self.addimageBtn setImage:choosedImage forState:UIControlStateNormal];
+            
+        }
+    } andError:^(id error) {
+        
+    }];
+}
+
+@end

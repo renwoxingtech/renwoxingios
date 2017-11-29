@@ -1,0 +1,211 @@
+//
+//  SubmitOrderVc.m
+//  CommonProject
+//
+//  Created by gaoguangxiao on 2017/1/8.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "SubmitOrderVc.h"
+#import "ChoosePerson.h"
+
+@interface SubmitOrderVc ()
+{
+    NSMutableArray <Customer *>*selectedCustomer;
+
+}
+@end
+
+@implementation SubmitOrderVc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+    selectedCustomer = [NSMutableArray array];
+    
+    self.shengyuLab.layer.masksToBounds = YES;
+    self.shengyuLab.layer.cornerRadius = 3;
+    [self updateChengkeView];
+    if (self.is12306dingpiao) {
+        self.title = @"12306订票";
+        self.zuoweiView.hidden = YES;
+        self.dibuView.hidden = YES;
+        self.submitBtn.top = self.chengekexinxiView.bottom+30;
+        
+    }else if(self.isspsm){
+        self.title = @"送票上门";
+        self.zuoweiView.hidden = YES;
+        self.dibuView.hidden = NO;
+        self.dibuView.top = self.chengekexinxiView.bottom;
+        self.submitBtn.top = self.chengekexinxiView.bottom+30;
+
+    }else if(self.issirendingzhi){
+        self.title  = @"私人订制";
+        self.zuoweiView.top = self.chengekexinxiView.bottom;
+        self.dibuView.top = self.zuoweiView.bottom;
+
+    }
+    [self updateChengkeView];
+    
+    
+    
+}
+
+-(void)updateChengkeView{
+    
+    
+    [UIView animateWithDuration:0.3 animations:^{
+        CGFloat height = selectedCustomer.count*50 + 75;
+        self.chengekexinxiView.height = height;
+        self.chengekexinxiView.clipsToBounds = YES;
+        
+        NSInteger index= 100 ;
+        for (Customer *cus in selectedCustomer) {
+            UIView *view = [self.cklistView viewWithTag:index];
+            UILabel *l1 = [view viewWithTag:10];
+            l1.text = cus.name;
+            UILabel *l2 = [view viewWithTag:11];
+            l2.text = cus.type_name;
+            UILabel *l3 = [view viewWithTag:12];
+            l3.text = cus.id_number;
+            
+            
+            
+            
+            index+=1;
+        }
+        
+        
+        if (self.is12306dingpiao) {
+            self.submitBtn.top = self.chengekexinxiView.bottom+30;
+            
+        }else if(self.isspsm){
+            self.dibuView.top = self.chengekexinxiView.bottom;
+            self.submitBtn.top = self.dibuView.bottom+30;
+
+        }else if(self.issirendingzhi){
+            self.zuoweiView.top = self.chengekexinxiView.bottom;
+            self.dibuView.top = self.zuoweiView.bottom;
+            self.submitBtn.top = self.dibuView.bottom+30;
+
+        }
+        
+        CGFloat hh =  self.submitBtn.bottom+30;
+        
+        if (hh<=self.scrollview.height) {
+            hh=self.scrollview.height+1;
+        }
+        self.scrollview.contentSize = CGSizeMake(SWIDTH, hh);    } completion:nil];
+
+        
+}
+
+
+- (IBAction)deleteck:(UIButton *)sender {
+    NSInteger index = sender.superview.tag - 100;
+    if (index<selectedCustomer.count) {
+        [selectedCustomer removeObjectAtIndex:index];
+        [self updateChengkeView];
+    }
+}
+- (IBAction)tjckAction:(UIButton *)sender {
+    BOOL isLogin = [[NSUserDefaults standardUserDefaults]boolForKey:@"isrxlogin"];
+    if (!isLogin) {
+        
+        BaseViewController *vcv = (BaseViewController *)[AppManager getVCInBoard:nil ID:@"LoginVc"];
+        
+        vcv.preObjvalue = @"DZXZVc";
+        PUSH(vcv);
+        return;
+    }
+    
+    
+    
+    ChoosePerson *vc = (ChoosePerson *)[self getVCInBoard:nil ID:@"ChoosePerson"];
+    vc.preObjvalue = selectedCustomer;
+    vc.ischoose12306 = self.is12306dingpiao;
+    
+    __weak typeof(self) weakSelf = self;
+    vc.touchEvent = ^(id value){
+        if ([value isKindOfClass:[NSArray class]]) {
+            selectedCustomer = value;
+            [weakSelf updateChengkeView];
+        }  
+    };
+    PUSH(vc);
+}
+
+
+
+- (IBAction)submitAction:(UIButton *)sender {
+    if (selectedCustomer.count<1) {
+        [LoadingView showAMessage:@"请先选择乘客"];
+        return;
+    } 
+    if (self.is12306dingpiao) {
+        CheCiRes *checi = self.preObjvalue;
+
+        if ([self.preObjvalue isKindOfClass:[NSArray class]]) {
+            NSArray *arrr = self.preObjvalue;
+            if (arrr.count==2) {
+                checi = arrr[0];
+            }
+            
+        }
+        if (!checi) {
+            return;
+        }
+        NSMutableDictionary *par = [NSMutableDictionary dictionary];
+        par[@"UToken"] = UToken;
+        par[@"checi"] = checi.train_code;
+        par[@"from_station_code"] = checi.from_station_code;
+        par[@"from_station_name"] = checi.from_station_name;
+        par[@"to_station_code"] = checi.to_station_code;
+        par[@"to_station_name"] = checi.to_station_name;
+        par[@"train_date"] = checi.train_start_date;
+        par[@"LoginUserName"] = @"";
+        par[@"LoginUserPassword"] = @"";
+        par[@"is_accept_standing"] = @1 ;
+        
+        NSMutableArray *passengers = [NSMutableArray array];
+        NSDictionary *passeng = @{@"passengersename":@"",@"passportseno":@"",@"passporttypeseidname":@"",@"passporttypeseid":@"",@"passengerid":@"",@"zwname":@"",@"zwcode":@"",@"price":@"",@"piaotype":@"",@"cxin":@""};
+        [passengers addObject:passeng];
+  
+        
+        par[@"passengers"] = [passengers mj_JSONString];
+        
+        //        passengers
+        //        0=>【
+        //        passengersename									乘客姓名
+        //        passportseno	 								乘客证件号
+        //        passporttypeseidname		 						乘客证件类型名
+        //        passporttypeseid	 							乘客证件类型CODE
+        //        passengerid									乘客唯一标识
+        //        zwname	 									坐席名
+        //        zwcode	 									坐席类型CODE,9:商务座，P:特等座，M:一等座，O:二等座，6:高级软卧，4:软卧，3:硬卧，2:软座，1:硬座
+        //        price	 									票价
+        //        piaotype   	 								票类型;1:成人票，2:儿童票，3:学生票，4:残军票
+        //        cxin	 									传空字符串
+        
+        
+        
+        
+        [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:par] andUrl:@"Action/createBuyTicketOnline/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+            if ([obj[@"code"] integerValue] == 1) {
+                [self.navigationController popToRootViewControllerAnimated:YES];
+            }
+            BaseViewController *vc = (BaseViewController *)[self getVCInBoard:nil ID:@"OrderDetailAndPay"];
+            PUSH(vc);
+        } andError:^(id error) {
+            BaseViewController *vc = (BaseViewController *)[self getVCInBoard:nil ID:@"OrderDetailAndPay"];
+            PUSH(vc);
+        }];   
+    }
+}
+- (IBAction)qupiao:(UIButton *)sender {
+}
+- (IBAction)shoujianact:(UIButton *)sender {
+}
+- (IBAction)zuowei1act:(UIButton *)sender {
+}
+@end

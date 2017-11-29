@@ -1,0 +1,61 @@
+//
+//  BuyTicketChooeseSeatVc.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/6.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "BuyTicketChooeseSeatVc.h"
+#import "SKBView.h"
+#import "CCPActionSheetView.h"
+@interface BuyTicketChooeseSeatVc ()
+
+@end
+
+@implementation BuyTicketChooeseSeatVc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.navBar.hidden = YES;
+    // Do any additional setup after loading the view.
+}
+- (IBAction)shikeb:(UIButton *)sender {
+    NSMutableArray *arr = [NSMutableArray array];
+    for (int i=0; i<20; i++) {
+        NSMutableArray *arr2 = [NSMutableArray array];
+        [arr2 addObject:@"阿萨德"];
+        [arr2 addObject:@"07:35"];
+        [arr2 addObject:@"07:35"];
+        [arr2 addObject:@"5分钟"];
+        [arr addObject:arr2];
+    }
+    SKBView *v = [[SKBView alloc]initWithTitles:arr];
+    CCPActionSheetView *alertview = [[CCPActionSheetView alloc] initWithAlertView:v];
+    
+    
+        
+        alertview.viewAnimateStyle = ViewAnimateFromTop;
+        
+  
+
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+/*
+#pragma mark - Navigation
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+}
+*/
+
+- (IBAction)buysubact1:(UIButton *)sender {
+}
+@end

@@ -1,0 +1,18 @@
+//
+//  ChangyongPsvc.h
+//  CommonProject
+//
+//  Created by mac on 2017/1/13.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "BaseViewController.h"
+
+@interface ChangyongPsvc : BaseViewController
+@property (weak, nonatomic) IBOutlet UITextField *lxr;
+@property (weak, nonatomic) IBOutlet UITextField *dh;
+@property (weak, nonatomic) IBOutlet UITextField *xxdz;
+@property (weak, nonatomic) IBOutlet UIButton *dz;
+- (IBAction)dizhiact:(UIButton *)sender;
+
+@end

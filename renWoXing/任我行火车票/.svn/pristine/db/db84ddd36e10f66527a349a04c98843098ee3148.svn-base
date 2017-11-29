@@ -1,0 +1,47 @@
+//
+//  DataModel.m
+//  CommonProject
+//
+//  Created by mac on 2016/12/27.
+//  Copyright © 2016年 mac. All rights reserved.
+//
+
+#import "DataModel.h"
+
+@implementation DataModel
+-(void)setValue:(id)value forUndefinedKey:(NSString *)key{
+    
+}
+@end
+@implementation TrainStation
+
+@end
+@implementation CheCiRes
+
+
+
+@end
+@implementation UserInfo
+
+
+
+@end
+
+@implementation DateObject
+
+
+
+
+@end
+
+@implementation Customer
+
+
+
+@end
+
+@implementation SeatType
+
+
+
+@end

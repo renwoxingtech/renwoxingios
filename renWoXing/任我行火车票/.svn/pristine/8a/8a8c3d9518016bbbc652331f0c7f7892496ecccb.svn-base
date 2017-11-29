@@ -1,0 +1,23 @@
+//
+//  TViewController.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/16.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "TViewController.h"
+
+@interface TViewController ()
+
+@end
+
+@implementation TViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+   
+}
+
+
+@end

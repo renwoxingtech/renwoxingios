@@ -1,0 +1,100 @@
+//
+//  WodeViewController.m
+//  CommonProject
+//
+//  Created by gaoguangxiao on 2017/1/8.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "WodeViewController.h"
+#import "CBAlertView.h"
+#import "LoginVc.h"
+#import "NormalOrderVc.h"
+
+@interface WodeViewController ()
+
+@end
+
+@implementation WodeViewController
+- (IBAction)denglu12306:(UIButton *)sender {
+    LoginVc *vcv = (LoginVc *)[AppManager getVCInBoard:nil ID:@"LoginVc"];
+    vcv.preObjvalue=@1;
+    vcv.is12306 = YES;
+    
+    vcv.touchEvent = ^(id value){
+        if ([value isKindOfClass:NSString.class]) {
+            
+            [self.name12306 setTitle:value forState:UIControlStateNormal] ;
+        }  
+    };
+    PUSH(vcv);
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view.
+    self.navBar.hidden = YES;
+    self.navigationController.navigationBar.hidden = YES;
+    
+    NSString *zh = [[NSUserDefaults standardUserDefaults] objectForKey:@"zh12306"];
+    
+    [self.name12306 setTitle:zh forState:UIControlStateNormal] ;
+
+    //使scrollview可以上下滑动
+    [self.view.subviews enumerateObjectsUsingBlock:^(__kindof UIView * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if ([obj isKindOfClass:[UIScrollView class]] && ![obj isKindOfClass:[UITableView class]]) {
+            UIScrollView *sc = obj;
+            UIView *v = sc.subviews.lastObject;
+            CGFloat h = v.bottom+10+69;
+            if (h<sc.height) {
+                h = sc.height+1;
+            }
+            sc.contentSize = CGSizeMake(sc.width, h);
+        }
+    }];
+
+}
+-(void)viewWillAppear:(BOOL)animated{
+    [self loadNetData2];
+    self.navigationController.navigationBar.hidden = YES;
+
+}
+-(void)loadNetData2{
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken}] andUrl:@"Action/userInfo/" showLoading:NO showMsg:NO isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue] == 1) {
+            [self updateWithInfo:obj];
+        }
+    } andError:nil];
+}
+-(void)updateWithInfo:(NSDictionary *)dic{
+    UserInfo *info = [UserInfo mj_objectWithKeyValues:dic[@"data"]];
+    if (!info) {
+        
+        
+        return;
+    }
+    _name.text = info.account;
+    _phone.text = info.phone;
+    
+}
+
+-(IBAction)call:(id)sender{
+    NSString *tel = @"843131313";
+    NSString *uul = [NSString stringWithFormat:@"tel://%@",tel];
+    
+    CBAlertView *vv = [[CBAlertView alloc]initWithTitle:@"拨打客服电话" actionsTitles:@[tel] imgnames:nil showCancel:YES showSure:NO event:^(id value) {
+        [[UIApplication sharedApplication] openURL:[NSURL URLWithString:uul]];
+        
+        
+    }];
+}
+
+
+
+- (IBAction)qpdd:(UIButton *)sender {
+    NormalOrderVc *vc = (NormalOrderVc *)[self getVCInBoard:@"Main" ID:@"NormalOrderVc"];
+    vc.isQpdd = YES;
+    
+    PUSH(vc);
+}
+@end

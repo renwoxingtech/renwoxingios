@@ -1,0 +1,37 @@
+//
+//  SubmitOrderVc.m
+//  CommonProject
+//
+//  Created by gaoguangxiao on 2017/1/8.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "SubmitOrderVc.h"
+
+@interface SubmitOrderVc ()
+
+@end
+
+@implementation SubmitOrderVc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"选择座位";
+    
+    self.shengyuLab.layer.masksToBounds = YES;
+    self.shengyuLab.layer.cornerRadius = 3;
+    
+    
+    CGFloat h = self.submitBtn.bottom+20;
+    if (h<SHEIGHT - self.zuoweijiageview.bottom) {
+        h = self.scrollview .height+1;
+    }
+    self.scrollview .contentSize = CGSizeMake(self.scrollview .width, h);
+    
+}
+
+
+
+- (IBAction)submitAction:(UIButton *)sender {
+}
+@end

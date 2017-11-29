@@ -1,0 +1,80 @@
+//
+//  OrderDetailAndPay.m
+//  CommonProject
+//
+//  Created by mac on 2017/2/7.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "OrderDetailAndPay.h"
+#import "PayView.h"
+
+@interface OrderDetailAndPay ()
+{
+    NSMutableArray *passengersData;
+    PayView *payView ;
+
+}
+@end
+@implementation PersonOrderDetailCell
+
+
+
+@end
+@implementation OrderDetailAndPay
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.orderData.status = @"";
+    if ([self.orderData.status integerValue]==2) {
+        [self initPayView];
+    }
+}
+-(void)loadNetData{
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{}] andUrl:@"" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue]==1) {
+            NSArray *a = obj[@"data"][@"passengers"];
+            passengersData = [Customer mj_objectArrayWithKeyValuesArray:a];
+            
+        }
+        [self.mainTableView reloadData];
+        
+    } andError:^(id error) {
+        
+    }];
+}
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    PersonOrderDetailCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PersonOrderDetailCell"];
+    
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    return cell;
+}
+-(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    return 2;
+    return passengersData.count;
+}
+-(void)initPayView{
+    
+    payView = [[PayView alloc]initWithFrame:CGRectMake(0, SHEIGHT - 45, SWIDTH, 45)];
+    payView.clipsToBounds = YES;
+    [payView.moneyBtn addTarget:self action:@selector(changeHeight) forControlEvents:UIControlEventTouchUpInside];
+    
+    [self.view addSubview:payView];
+    
+    NSLog(@"");
+}
+-(void)changeHeight{
+    [UIView animateWithDuration:0.5 animations:^{
+        
+        if (payView.height==45) {
+            payView.height = 45*3;
+            payView.top = SHEIGHT - payView.height;
+        }else{
+            payView.height = 45;
+            payView.top = SHEIGHT - payView.height;
+            
+        }
+    }];
+}
+
+@end

@@ -1,0 +1,22 @@
+//
+//  ChangyongPsvc.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/13.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "ChangyongPsvc.h"
+
+@interface ChangyongPsvc ()
+
+@end
+
+@implementation ChangyongPsvc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+}
+
+@end

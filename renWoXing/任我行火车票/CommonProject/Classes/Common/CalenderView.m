@@ -1,0 +1,562 @@
+//
+//  CalenderView.m
+//  XWDC
+//
+//  Created by mac on 15/11/30.
+//  Copyright © 2015年 hcb. All rights reserved.
+//
+
+#import "CalenderView.h"
+
+
+#define TopHeight 70
+#define ScreenWidth [UIScreen mainScreen].bounds.size.width
+#define ScreenHeight [UIScreen mainScreen].bounds.size.height
+#define OldCalendarY (calendarBarHeight+weekBarHeight+currentCalendarHeight+TopHeight)
+#define RGBACOLOR(r,g,b,a) [UIColor colorWithRed:(r)/255.0 green:(g)/255.0 blue:(b)/255.0 alpha:(a)]
+
+@interface CalenderView ()
+{
+
+    CGFloat calendarBarHeight;//toolBar的高度
+    CGFloat calendarBarWidth;//toolBar的宽度
+    int currentYear;//calendarBar中显示的当前的年份
+    int currentMonth;//calendarBar中显示的当前月份
+    CGFloat weekBarHeight;//weekBar的高度
+    NSArray *weekArray;//存取星期数组
+    BOOL isLeapYear;//是否是闰年
+    int week;//比实际数组中的序号多1，所以用的时候得-1
+    int  year;//当前年份
+    int month;//当前月份
+    int numOfMonth;//每月有多少天
+    int  day;//当天
+    int firstWeek;//第一天是星期几
+    int endWeek;//最后一天是星期几
+    CGFloat eachWidth;//每个按钮的宽度
+    CGFloat eachHeight;
+    int today;
+    int presentMonth;
+    int presentYear;
+    CGFloat currentCalendarHeight;//获取当前日历的总高度
+    //    OldCalendarView *oldCalendarView;
+    NSArray* animals;
+    CGFloat oldCalendarHeight;//老黄历界面的高度
+    UIButton *nextMonth;
+    UIButton *previousMonth;
+    UIScrollView *_scrollView;
+    int initYear;
+    int initMonth;
+    NSInteger lastTag;
+    UILabel *selectLB;
+    UILabel *yearLB;
+
+}
+
+@end
+
+
+@implementation CalenderView
+
+/*
+ // Only override drawRect: if you perform custom drawing.
+ // An empty implementation adversely affects performance during animation.
+ - (void)drawRect:(CGRect)rect {
+ // Drawing code
+ }
+ */
+- (CAGradientLayer*) gradient {
+    CGFloat red;
+    CGFloat green;
+    CGFloat blue;
+    CGFloat alpha;
+
+    CGFloat radius = 0.8;
+    //    UIColor* color = RGBACOLOR(242, 147, 24, 1.0);;
+    UIColor* color = [UIColor redColor];
+    [color getRed:&red green:&green blue:&blue alpha:&alpha];
+
+    UIColor *colorLeft = [UIColor colorWithRed:red green:green blue:blue alpha: radius];
+    UIColor *colorLeft1 = [UIColor colorWithRed:red green:green blue:blue alpha: radius / 3];
+    UIColor *colorMiddle = [UIColor colorWithRed:red green:green blue:blue alpha:0];
+    UIColor *colorRight1 = [UIColor colorWithRed:red green:green blue:blue alpha:radius / 3];
+    UIColor *colorRight = [UIColor colorWithRed:red green:green blue:blue alpha: radius];
+    colorLeft = [UIColor redColor];
+    colorRight = [UIColor yellowColor];
+    colorMiddle = [UIColor purpleColor];
+    NSArray *colors = [NSArray arrayWithObjects:(id)colorLeft.CGColor, colorLeft1.CGColor, colorMiddle.CGColor, colorRight1.CGColor, colorRight.CGColor,nil];
+    NSNumber *stopOne = [NSNumber numberWithFloat:0.0];
+    NSNumber *stopTwo = [NSNumber numberWithFloat:0.25];
+    NSNumber *stopThree = [NSNumber numberWithFloat:0.5];
+    NSNumber *stopFour = [NSNumber numberWithFloat:0.75];
+    NSNumber *stopFive = [NSNumber numberWithFloat:1];
+
+    NSArray *locations = [NSArray arrayWithObjects:stopOne, stopTwo, stopThree, stopFour, stopFive, nil];
+
+    CAGradientLayer *gradientLayer = [CAGradientLayer layer];
+    gradientLayer.colors = colors;
+    gradientLayer.locations = locations;
+
+    gradientLayer.startPoint = CGPointMake(0, 0.5);
+    gradientLayer.endPoint = CGPointMake(1.0, 0.5);
+
+    return gradientLayer;
+}
+
+-(instancetype)initWithFrame:(CGRect)frame andMaxDays:(int)days{
+    self = [super initWithFrame:frame];
+    if (self) {
+        weekArray=@[@"日",@"一",@"二",@"三",@"四",@"五",@"六"];
+        calendarBarHeight=40;
+        calendarBarWidth=self.frame.size.width;
+        weekBarHeight=30;
+        eachWidth=self.frame.size.width/weekArray.count;
+        self.backgroundColor = [UIColor whiteColor];
+        [self getCurrentCalendar];
+        today=day;
+        presentMonth=month;
+        presentYear=year;
+        initYear = year;
+        initMonth = month;
+        currentMonth = month;
+        currentYear = year;
+        _maxDays = days;
+        [self isLeapYear];
+        [self firstDayOfmonthForWeek];
+        [self numberOfMonth];
+        [self createToolBar];
+        [self createWeekBar];
+        [self calendarAppear];
+
+    }
+    return self;
+
+}
+
+
+
+-(void)createWeekBar{
+    UIView *weekView=[[UIView alloc]initWithFrame:CGRectMake(0, calendarBarHeight+TopHeight, self.frame.size.width, weekBarHeight)];
+    [self addSubview:weekView];
+    for (int index=0; index<weekArray.count;index++) {
+        UILabel *label=[[UILabel alloc]initWithFrame:CGRectMake(index*eachWidth, 0, eachWidth, weekBarHeight)];
+        label.text=weekArray[index];
+        label.font = [UIFont boldSystemFontOfSize:15];
+        label.textColor=[UIColor blackColor];
+        label.textAlignment=NSTextAlignmentCenter;
+        label.adjustsFontSizeToFitWidth=YES;
+        [weekView addSubview:label];
+
+    }
+
+     _scrollView = [[UIScrollView alloc]initWithFrame:CGRectMake(0, CGRectGetMaxY(weekView.frame), self.frame.size.width, 6*35)];
+    _scrollView.contentSize = CGSizeMake(self.frame.size.width*3, 0);
+    _scrollView.pagingEnabled = YES;
+    _scrollView.delegate = self;
+    _scrollView.showsHorizontalScrollIndicator = NO;
+    [self addSubview:_scrollView];
+}
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView{
+    int index = (int)scrollView.contentOffset.x/self.frame.size.width;
+    if (index==0) {
+        previousMonth.hidden = YES;
+        nextMonth.hidden = NO;
+    }else if (index==((int)scrollView.contentSize.width/self.frame.size.width-1)){
+        previousMonth.hidden = NO;
+        nextMonth.hidden = YES;
+    }else{
+        previousMonth.hidden = NO;
+        nextMonth.hidden = NO;
+    }
+
+    if (initMonth+index==13) {
+        self.currentLabel.text=[NSString stringWithFormat:@"%d年%d月",initYear+1,1];
+        currentYear = initYear+1;
+        currentMonth = 1;
+    }else if (initMonth+index==14){
+         self.currentLabel.text=[NSString stringWithFormat:@"%d年%d月",initYear+1,2];
+        currentYear = initYear+1;
+        currentMonth = 2;
+    }else{
+    self.currentLabel.text=[NSString stringWithFormat:@"%d年%d月",initYear,initMonth+index];
+        currentYear = initYear;
+        currentMonth = initMonth+index;
+    }
+}
+
+/**
+ *  获取到当前时间（农历）
+ */
+-(void)getCurrentCalendar{
+    NSDate *date = [NSDate date];
+    NSCalendar *calendar =[[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
+    NSDateComponents *comps = [[NSDateComponents alloc] init];
+    NSInteger unitFlags = NSCalendarUnitYear |
+    NSCalendarUnitMonth |
+    NSCalendarUnitDay |
+    NSCalendarUnitWeekday |
+    NSCalendarUnitHour |
+    NSCalendarUnitMinute |
+    NSCalendarUnitSecond;
+    [calendar setFirstWeekday:1];
+    comps = [calendar components:unitFlags fromDate:date];
+    //获取当前时间 年月日
+    week = (int)[comps weekday];
+    year=(int)[comps year];
+    month =(int) [comps month];
+    day = (int)[comps day];
+
+    //    //除数当前时间
+    //    ////NSLog(@"%@",[NSString stringWithFormat:@"%d年%d月",year,month]);
+    //    ////NSLog(@"%@",[NSString stringWithFormat:@"%d",day]);
+    //    ////NSLog(@"%@",[NSString stringWithFormat:@"%@",[weekArray objectAtIndex:week-1]]);
+}
+
+/**
+ *  获取当月第一天是星期几
+ */
+-(int)firstDayOfmonthForWeek{
+    int rest=(day-1)%7;
+    int temp=week-rest;
+    if(temp>0){
+        firstWeek=week-rest;
+    }else{
+        firstWeek=week+(7-rest);
+    }
+
+    return firstWeek;
+}
+/**
+ *  获取当月最后一天是星期几
+ */
+-(int)endDayOfMonthForWeek{
+    //    int rest=(numOfMonth-1)%7;
+    //    int tempWeek=firstWeek+rest;
+    //    if (tempWeek>7) {
+    //        endWeek=tempWeek-7;
+    //    }else{
+    //        endWeek=tempWeek;
+    //    }
+    int rest=(numOfMonth-8+firstWeek)%7;
+    endWeek=rest;
+    return endWeek;
+}
+#pragma mark -设置状态栏的样式
+-(UIStatusBarStyle)preferredStatusBarStyle{
+    return UIStatusBarStyleLightContent;
+}
+/**
+ *  得到每个月有多少天
+ */
+-(void)numberOfMonth{
+    if(month==1|month==3|month==5|month==7|month==8|month==10|month==12){
+        numOfMonth=31;
+    }
+    if(month==4|month==6|month==9|month==11){
+        numOfMonth=30;
+    }
+    if(isLeapYear&&month==2){
+        numOfMonth=29;
+    }
+    if((!isLeapYear)&&(month==2)){
+        numOfMonth=28;
+    }
+
+}
+/**
+ *  判断是否是闰年
+ */
+-(void)isLeapYear{
+    BOOL condition_one=(year%4==0&&year%100!=0);
+    BOOL condeition_two=(year%400==0);
+    if(condition_one|condeition_two){
+        isLeapYear=YES;
+    }else{
+        isLeapYear=NO;
+    }
+}
+/**
+ *动态创建一个日历内容界面
+ */
+-(void)calendarAppear{
+
+    if(ScreenHeight==480){
+        eachHeight=30*480/568;
+    }else if(ScreenHeight==667){
+        eachHeight=30*667/568;
+    }else if(ScreenHeight==736){
+        eachHeight=30*736/568;
+    }else{
+        eachHeight=30;
+    }
+
+    int monthLabel=1;
+    CGFloat initialHeight=calendarBarHeight+weekBarHeight;
+    initialHeight = 5;
+    CGFloat maxHeight = 0.0;
+    int dayCount = 1;
+
+    for (int page = 0; page<3; page++) {
+        monthLabel = 1;
+        for (int i=firstWeek-1; i<(firstWeek+numOfMonth-1); i++) {
+            int row=i/weekArray.count;
+            int col=i%weekArray.count;
+            UIButton *eachButton=[UIButton buttonWithType:UIButtonTypeCustom];
+            eachButton.frame=CGRectMake(eachWidth*col+5+page*self.frame.size.width, initialHeight+ (eachHeight+5)*row,eachHeight, eachHeight);
+            eachButton.titleLabel.font = [UIFont systemFontOfSize:15];
+            eachButton.backgroundColor=[UIColor whiteColor];
+            ;
+            [eachButton setTitle:[NSString stringWithFormat:@"%d",monthLabel] forState:UIControlStateNormal];
+            eachButton.tag=monthLabel+100+page*31;
+            eachButton.layer.cornerRadius = eachHeight*0.5;
+            eachButton.layer.masksToBounds = YES;
+            [eachButton setTitleColor:[UIColor darkGrayColor] forState:UIControlStateNormal];
+            if(((monthLabel==today||monthLabel<today)&&month==presentMonth&&year==presentYear)||dayCount>_maxDays){
+                if (monthLabel<today||dayCount>_maxDays) {
+                    eachButton.enabled=NO;
+                    [eachButton setTitleColor:[UIColor lightGrayColor] forState:UIControlStateNormal];
+                }else{
+                    [eachButton setTitleColor:[UIColor redColor] forState:UIControlStateNormal];
+                }
+                eachButton.adjustsImageWhenDisabled=NO;
+            }else {
+                dayCount ++;
+            }
+            [eachButton addTarget:self action:@selector(changeDes:) forControlEvents:UIControlEventTouchUpInside];
+            [_scrollView addSubview:eachButton];
+            if (page==0&&monthLabel==1) {
+                eachButton.selected = YES;
+                lastTag = eachButton.tag;
+            }
+            NSLog(@"%ld",(long)eachButton.tag);
+            monthLabel++;
+            if(i==(firstWeek+numOfMonth-2)){
+                currentCalendarHeight=eachHeight*(row+1);
+            }
+            maxHeight = eachButton.frame.size.height+eachButton.frame.origin.y;
+            _isShowLunar = NO;
+            
+        }
+        if(month==12){
+            year++;
+            month=1;
+        }else{
+            month=month+1;
+        }
+        [self endDayOfMonthForWeek];
+        [self numberOfMonth];
+        if(endWeek==7){
+            firstWeek=1;
+        }else{
+            firstWeek=endWeek+1;
+        }
+
+
+        if(presentMonth==month&&presentYear==year){
+            //        if(![[self.view subviews]containsObject:oldCalendarView]){
+            //            [self createOldCalendarView];
+            //        }
+            //        [self oldCalenderDataFromNet].delegate = self;
+            day=today;
+        }
+    }
+
+    if (_sureBtn) {
+        [_sureBtn removeFromSuperview];
+    }
+    CGRect frame = _scrollView.frame;
+    frame.size.height = maxHeight+10+eachHeight;
+    _scrollView.frame = frame;
+
+
+  UIButton*  cancleBtn = [[UIButton alloc]initWithFrame:CGRectMake(self.frame.size.width-70-10-70-10, CGRectGetMaxY(_scrollView.frame), 70, eachHeight)];
+//    cancleBtn.backgroundColor = [UIColor orangeColor];
+    cancleBtn.titleLabel.font = [UIFont systemFontOfSize:14];
+    [cancleBtn setTitle:@"取消" forState:UIControlStateNormal];
+    cancleBtn.layer.cornerRadius = 4;
+    cancleBtn.layer.masksToBounds = YES;
+    [cancleBtn addTarget:self action:@selector(cancleAction) forControlEvents:UIControlEventTouchUpInside];
+    [cancleBtn setTitleColor:[UIColor colorWithRed:18/255.0 green:151/255.0 blue:127/255.0 alpha:1.0]forState:0];
+    [self addSubview:cancleBtn];
+
+
+
+    _sureBtn = [[UIButton alloc]initWithFrame:CGRectMake(self.frame.size.width-70-10, CGRectGetMaxY(_scrollView.frame), 70, eachHeight)];
+//    _sureBtn.backgroundColor = [UIColor orangeColor];
+    [_sureBtn setTitleColor:[UIColor colorWithRed:18/255.0 green:151/255.0 blue:127/255.0 alpha:1.0] forState:0];
+    _sureBtn.titleLabel.font = [UIFont systemFontOfSize:14];
+    [_sureBtn setTitle:@"确定" forState:UIControlStateNormal];
+    _sureBtn.layer.cornerRadius = 4;
+    _sureBtn.layer.masksToBounds = YES;
+    [_sureBtn addTarget:self action:@selector(selectDate) forControlEvents:UIControlEventTouchUpInside];
+    [self addSubview:_sureBtn];
+
+
+
+    _viewHeight = _scrollView.frame.origin.y+_scrollView.frame.size.height+eachHeight+20;
+
+}
+
+- (void)cancleAction{
+    [self.superview removeFromSuperview];
+    
+}
+
+- (void)selectDate{
+
+    if (self.getDate) {
+        self.getDate([NSString stringWithFormat:@"%d-%02d-%02d",currentYear,currentMonth,day]);
+    }
+    [UIView animateWithDuration:0.5 animations:^{
+        self.superview.alpha = 0.0;
+    } completion:^(BOOL finished) {
+        [self.superview removeFromSuperview];
+    }];
+
+}
+
+
+
+
+
+/**
+ *  日历的触发事件
+ */
+-(void)changeDes:(UIButton *)button{
+
+    button.backgroundColor =[UIColor colorWithRed:18/255.0 green:151/255.0 blue:127/255.0 alpha:1.0];
+    
+    UIButton *currentButton=(UIButton *)[_scrollView viewWithTag:lastTag];
+    button.enabled=NO;
+    button.adjustsImageWhenDisabled=NO;
+    day=[button currentTitle].intValue;
+    ////NSLog(@"%d",day);
+    [currentButton setBackgroundColor:[UIColor whiteColor]];
+    currentButton.enabled=YES;
+    [currentButton setBackgroundImage:nil forState:UIControlStateNormal];
+
+    lastTag = button.tag;
+    NSDateComponents *_comps = [[NSDateComponents alloc] init];
+    [_comps setDay:day];
+    [_comps setMonth:currentMonth];
+    [_comps setYear:currentYear];
+    NSCalendar *gregorian = [[NSCalendar alloc]
+                             initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
+    NSDate *_date = [gregorian dateFromComponents:_comps];
+    NSDateComponents *weekdayComponents =
+    [gregorian components:NSCalendarUnitWeekday fromDate:_date];
+    
+    int _weekday = (int)[weekdayComponents weekday];
+
+    selectLB.text=[NSString stringWithFormat:@"%d月%d日 周%@",currentMonth,day,weekArray[_weekday-1]];
+    yearLB.text = [NSString stringWithFormat:@"%d年",currentYear];
+
+
+
+//    if (self.getDate) {
+//        self.getDate([NSString stringWithFormat:@"%d-%d-%d",currentYear,currentMonth,day]);
+//    }
+
+
+}
+
+
+
+/**
+ *  创建toolBar
+ *
+ */
+-(void)createToolBar{
+
+    UIView *topView = [[UIView alloc]initWithFrame:CGRectMake(0, 0, self.frame.size.width, 70)];
+    topView.backgroundColor = [UIColor colorWithRed:18/255.0 green:151/255.0 blue:127/255.0 alpha:1.0];
+    [self addSubview:topView];
+
+    yearLB = [[UILabel alloc]initWithFrame:CGRectMake(20, 5, self.frame.size.width-40, 20)];
+    yearLB.textColor = [UIColor whiteColor];
+
+    [topView addSubview:yearLB];
+
+
+    selectLB = [[UILabel alloc]initWithFrame:CGRectMake(20, 30, self.frame.size.width-40, 30)];
+    selectLB.textColor = [UIColor whiteColor];
+
+    selectLB.font = [UIFont systemFontOfSize:22];
+    [topView addSubview:selectLB];
+    NSDateComponents *_comps = [[NSDateComponents alloc] init];
+    [_comps setDay:day];
+    [_comps setMonth:currentMonth];
+    [_comps setYear:currentYear];
+    NSCalendar *gregorian = [[NSCalendar alloc]
+                             initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
+    NSDate *_date = [gregorian dateFromComponents:_comps];
+    NSDateComponents *weekdayComponents =
+    [gregorian components:NSCalendarUnitWeekday fromDate:_date];
+    int _weekday = [weekdayComponents weekday];
+
+    selectLB.text=[NSString stringWithFormat:@"%d月%d日 周%@",currentMonth,day,weekArray[_weekday-1]];
+    yearLB.text = [NSString stringWithFormat:@"%d年",currentYear];
+
+
+
+
+
+    //显示当前的年份、月份
+    UIView *barView=[[UIView alloc]initWithFrame:CGRectMake(0, TopHeight, calendarBarWidth, calendarBarHeight)];
+    barView.backgroundColor=[UIColor whiteColor];
+    previousMonth=[UIButton buttonWithType:UIButtonTypeCustom];
+    previousMonth.frame=CGRectMake(0, 0, calendarBarWidth/4, calendarBarHeight);
+    [previousMonth setTitle:@"上一月" forState:UIControlStateNormal];
+    [previousMonth addTarget:self action:@selector(preMonth) forControlEvents:UIControlEventTouchUpInside];
+    [previousMonth setTitleColor:RGBACOLOR(80, 80, 80, 1.0) forState:UIControlStateNormal];
+    [barView addSubview:previousMonth];
+
+
+    nextMonth=[UIButton buttonWithType:UIButtonTypeCustom];
+    nextMonth.frame=CGRectMake(3*calendarBarWidth/4, 0, calendarBarWidth/4, calendarBarHeight);
+    [nextMonth setTitle:@"下一月" forState:UIControlStateNormal];
+    [nextMonth setTitleColor:RGBACOLOR(80, 80, 80, 1.0) forState:UIControlStateNormal];
+    [nextMonth addTarget:self action:@selector(nextMonth) forControlEvents:UIControlEventTouchUpInside];
+    [barView addSubview:nextMonth];
+
+    previousMonth.titleLabel.font = [UIFont systemFontOfSize:15];
+    nextMonth.titleLabel.font = [UIFont systemFontOfSize:15];
+
+    UIView *line = [[UIView alloc]initWithFrame:CGRectMake(0, calendarBarHeight-1, ScreenHeight, 0.5)];
+    [barView addSubview:line];
+    line.backgroundColor = [UIColor grayColor];
+    self.currentLabel=[[UILabel alloc]initWithFrame:CGRectMake(10, 0, self.frame.size.width-20, calendarBarHeight)];
+
+    self.currentLabel.text=[NSString stringWithFormat:@"%d年%d月",year,month];
+    self.currentLabel.textColor=RGBACOLOR(80, 80, 80, 1.0);
+    self.currentLabel.textAlignment=NSTextAlignmentCenter;
+    self.currentLabel.font=[UIFont systemFontOfSize:18];
+    [barView addSubview:self.currentLabel];
+    [self addSubview:barView];
+    previousMonth.hidden = YES;
+    nextMonth.hidden = NO;
+
+
+}
+/**
+ *  上一月方法
+ */
+//通过最后一天的
+-(void)preMonth{
+
+    int index = (int)_scrollView.contentOffset.x/self.frame.size.width;
+    [_scrollView setContentOffset:CGPointMake((index-1)*self.frame.size.width, 0) animated:YES];
+
+
+
+}
+
+/**
+ *  下一月方法
+ */
+-(void)nextMonth{
+    int index = (int)_scrollView.contentOffset.x/self.frame.size.width;
+    [_scrollView setContentOffset:CGPointMake((index+1)*self.frame.size.width, 0) animated:YES];
+
+}
+
+@end

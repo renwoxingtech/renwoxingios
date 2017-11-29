@@ -1,0 +1,13 @@
+//
+//  ChoeseStationVC.h
+//  CommonProject
+//
+//  Created by mac on 2017/1/4.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+
+
+@interface ChoeseStationVC : BaseViewController
+
+@end

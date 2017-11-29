@@ -1,0 +1,21 @@
+//
+//  DZXZVc.h
+//  CommonProject
+//
+//  Created by gaoguangxiao on 2017/1/7.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "BaseViewController.h"
+
+@interface DZXZVc : BaseViewController
+@property (weak, nonatomic) IBOutlet UIButton *chufadi;
+@property (weak, nonatomic) IBOutlet UIButton *mudidi;
+@property (weak, nonatomic) IBOutlet UIButton *qiehuan;
+@property (weak, nonatomic) IBOutlet UIButton *riqiBtn;
+@property (weak, nonatomic) IBOutlet UIButton *checiBtn;
+@property (weak, nonatomic) IBOutlet UIButton *leixing;
+@property (weak, nonatomic) IBOutlet UIButton *tjck;
+@property (weak, nonatomic) IBOutlet UIButton *xiayibu;
+
+@end

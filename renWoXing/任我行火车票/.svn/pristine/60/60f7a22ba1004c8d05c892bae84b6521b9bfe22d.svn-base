@@ -1,0 +1,484 @@
+//
+//  OrderDetailAndPay.m
+//  CommonProject
+//
+//  Created by mac on 2017/2/7.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "OrderDetailAndPay.h"
+#import "PayView.h"
+#import "CBAlertView.h"
+#import "NSString+Hash.h"
+#import "payRequsestHandler.h"
+#import <AlipaySDK/AlipaySDK.h>
+
+@interface OrderDetailAndPay ()
+{
+    NSMutableArray *passengersData;
+    PayView *payView ;
+    OrderData *res;
+    
+    
+    
+}
+@end
+@implementation PersonOrderDetailCell
+
+
+
+@end
+@implementation OrderDetailAndPay
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    self.mainTableView.mj_header = nil;
+    self.baoxianview.hidden = YES;
+    
+    UIBarButtonItem *backBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"back-arrow"] style:UIBarButtonItemStylePlain target:self action:@selector(backAction)];
+    self.navItem.leftBarButtonItem = backBarButtonItem;
+}
+-(void)backAction{
+    if(self.navigationController.viewControllers.count>=2){
+        NSInteger counn = self.navigationController.viewControllers.count;
+        
+        BaseViewController *vc = self.navigationController.viewControllers[counn-2];
+        if (vc && ![vc isKindOfClass:NSClassFromString(@"NormalOrderVc")]) {
+            [self.navigationController popToRootViewControllerAnimated:YES];
+            return ;
+        }else{
+            POP;
+        }
+    }else
+        POP;    
+}
+-(void)initTopView{
+    if ([res.status integerValue]==2) {
+        [self initPayView];
+        self.baoxianview.hidden = NO;
+        self.mainTableView.tableFooterView = self.baoxianview;
+        
+        CGFloat hh = passengersData.count*100+72;
+        if (hh>(SHEIGHT-self.mainTableView.top-50)) {
+            hh = (SHEIGHT-self.mainTableView.top-50);
+        }
+        self.mainTableView.height = hh;
+    }else{
+        CGFloat hh = passengersData.count*100;
+        if (hh>(SHEIGHT-self.mainTableView.top-50)) {
+            hh = (SHEIGHT-self.mainTableView.top-50);
+        }
+        self.mainTableView.height = hh;
+    }
+    
+    
+
+    self.chufadi.text = res.from_station_name;
+    self.mudidi.text = res.to_station_name;
+    self.chufashijian.text = res.start_time;
+    self.daodashijian.text = res.arrive_time;
+    
+    
+    self.chufadi.text = res.from_station_name;
+    self.mudidi.text = res.to_station_name;
+    
+//    self.lishi.text = [NSString stringWithFormat:@"%@分",[res.runtime stringByReplacingOccurrencesOfString:@":" withString:@"时"] ];
+    
+    NSString *chufatime = [res.start_time substringWithRange:NSMakeRange(11, 5)];
+    NSString *daodatime = [res.arrive_time substringWithRange:NSMakeRange(11, 5)];
+    self.chufashijian.text = chufatime;
+    self.daodashijian.text = daodatime;
+    NSString *n  = [res.runtime stringByReplacingOccurrencesOfString:@":" withString:@"时"] ;
+    self.lishi.text = [n stringByAppendingString:@"分"];
+    self.checi.text = res.checi;
+//    if ([res.start_station_name isEqualToString:res.from_station_name]) {
+//        if ([res.end_station_name isEqualToString:res.to_station_name]) {
+//            self.indicatorView.image = [UIImage imageNamed:@"qi-zhong"];
+//        }else{
+//            self.indicatorView.image = [UIImage imageNamed:@"qi-zhuan"];
+//            
+//        }
+//    }else{
+//        if ([res.end_station_name isEqualToString:res.to_station_name]) {
+//            self.indicatorView.image = [UIImage imageNamed:@"zhuan-zhong"];
+//        }else{
+//            self.indicatorView.image = [UIImage imageNamed:@"zhuan-zhuan"];
+//            
+//        }
+//    }
+
+    //    20170215
+
+    
+    NSDate *date1 = [AppManager dateFromString:res.start_time format:@"yyyy-MM-dd HH:mm:ss"];
+    NSString *wek = [self showWeekOrDate:date1];
+    NSString *date1Str = [AppManager stringFromDate:date1 format:@"yyyy年MM月dd日 HH:mm"];
+
+    
+    NSString *fache =  [NSString stringWithFormat:@"%@ 开(%@)",date1Str,wek] ;
+    self.facehtime.text = fache;
+    NSDate *date2 = [NSDate date];
+    NSTimeInterval time=[date1 timeIntervalSinceDate:date2];
+    
+    int days=((int)time)/(3600*24);
+    int hours=((int)time)%(3600*24)/3600;
+    int minite=(((int)time)%(3600*24)%3600)/60;
+    
+    NSString *dateContent = @"已发车";
+    
+    if (days>0) {
+        dateContent = [[NSString alloc] initWithFormat:@"剩余 %i天%i小时%i分",days,hours,minite];
+    }else if(hours>=0 && minite>=0){
+        dateContent = [[NSString alloc] initWithFormat:@"剩余 %i小时%i分",hours,minite];
+        
+    }
+    self.shengyuLab.text = dateContent;
+    self.shengyuLab.layer.cornerRadius = 4;
+    self.shengyuLab.layer.masksToBounds = YES;
+    [self.shengyuLab sizeToFit];
+    self.shengyuLab.width+=10;
+    self.shengyuLab.height+=8;
+    self.title = @"订单详情";
+    
+    UIButton *btn = [[UIButton alloc]initWithFrame:CGRectMake(10, 10, 65, 27)];
+    [btn setImage:[UIImage imageNamed:@""] forState:UIControlStateNormal];
+    [btn addTarget:self action:@selector(cancelOrder:) forControlEvents:UIControlEventTouchUpInside];
+    btn.backgroundColor = BlueColor;
+    btn.titleLabel.font = Font(15);
+    btn.layer.cornerRadius = 4;
+    
+    [btn setTitle:@"取消订单" forState:UIControlStateNormal];
+    btn.tag = 10;
+    UIBarButtonItem *item = [[UIBarButtonItem alloc]initWithCustomView:btn];
+//    self.navItem.rightBarButtonItem = item;
+    
+}
+-(NSString *)showWeekOrDate:(NSDate *)date{
+    NSString *dateStr = [AppManager stringFromDate:date format:@"yyyy-MM-dd"];
+    NSString *today = [AppManager stringFromDate:[NSDate date] format:@"yyyy-MM-dd"];
+    NSString *tomorrow = [AppManager stringFromDate:[NSDate dateWithTimeIntervalSinceNow:3600*24] format:@"yyyy-MM-dd"];
+    NSString *afterTom = [AppManager stringFromDate:[NSDate dateWithTimeIntervalSinceNow:3600*24*2] format:@"yyyy-MM-dd"];
+    NSString *newStr = @"";
+    
+    if ([dateStr isEqualToString:today]) {
+        newStr = @"今天";
+    }else
+        if ([dateStr isEqualToString:tomorrow]) {
+            newStr = @"明天";
+        }else
+            if ([dateStr isEqualToString:afterTom]) {
+                newStr = @"后天";
+            }else
+                newStr = [OrderDetailAndPay getWeekDayFordate:[date timeIntervalSince1970]];
+    return newStr;
+    
+}
+//根据时间戳获取星期几
++ (NSString *)getWeekDayFordate:(long long)data
+{
+    NSArray *weekday = [NSArray arrayWithObjects: [NSNull null], @"周日", @"周一", @"周二", @"周三", @"周四", @"周五", @"周六", nil];
+    
+    NSDate *newDate = [NSDate dateWithTimeIntervalSince1970:data];
+    NSCalendar *calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
+    NSDateComponents *components = [calendar components:NSWeekdayCalendarUnit fromDate:newDate];
+    
+    NSString *weekStr = [weekday objectAtIndex:components.weekday];
+    return weekStr;
+}
+
+
+-(void)cancelOrder:(UIButton *)btn{
+    
+}
+-(void)loadNetData{
+
+    if (!self.orderid) {
+        [LoadingView showAMessage:@"订单号为空"];
+        return;
+    }
+    if (!self.url) {
+        [LoadingView showAMessage:@"url为空"];
+        
+        return;
+    }
+    NSDictionary *par = @{@"UToken":UToken,@"orderid":self.orderid};
+    
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:par] andUrl:self.url showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue]==1) {
+            NSArray *a = obj[@"data"][@"passengers"];
+            res = [OrderData mj_objectWithKeyValues:obj[@"data"]];
+            self.tiplable.text = @"已下单，等待支付";
+            
+            passengersData = [Customer mj_objectArrayWithKeyValuesArray:a];
+            [self initTopView];
+                   
+        }
+        [self.mainTableView reloadData];
+        
+    } andError:^(id error) {
+        
+    }];
+}
+//钱数都为分
+-(void)showPrice:(CGFloat)buyedPrice insurance:(CGFloat)insurance count:(NSInteger)count{
+//    CGFloat buyedPrice = [self getMaxPrice];
+    CGFloat singleIns = 0.0;
+    singleIns = insurance;
+
+    _baoxianlable.text = [NSString stringWithFormat:@"%.1f元/份",singleIns/100.0];
+    
+    payView.baoxianPrice.text =  [NSString stringWithFormat:@"%.1f元/份x%ld",singleIns/100.0,count];
+    payView.chepiaoPrice.text = [NSString stringWithFormat:@"¥%.1fx%ld",buyedPrice,count];
+    CGFloat totalprice = singleIns/100.0*count+buyedPrice*count;
+    [payView.moneyBtn setTitle:[NSString stringWithFormat:@"实付款:%.1f",totalprice] forState:UIControlStateNormal];
+
+}
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    PersonOrderDetailCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PersonOrderDetailCell"];
+    Customer *cus = passengersData[indexPath.row];
+    cell.name.text = cus.passengersename;
+    cell.numbern_id.text = cus.passportseno;
+    cell.zhengjianleixing.text = cus.passporttypeseidname;
+    cell.zauweixinxi.text = [NSString stringWithFormat:@"%@",cus.zwname];
+    cell.yiwaixian.hidden = ![cus.insurance integerValue];
+    if (cus.price) {
+        
+        cell.jiage.hidden = NO;
+        
+        cell.jiage.text  = [NSString stringWithFormat:@"¥%@",cus.price];
+    }else{
+        cell.jiage.hidden = YES;
+    }
+//    用户订票状态；1：正常；2：退票中；3：退票失败；4退票成功，退款中；5退款完成
+    cell.zhaungtai.text = [self statusStrwithsts:[cus.status integerValue]];
+    if ([cus.status integerValue]==1) {
+        cell.zhaungtai.backgroundColor = [UIColor redColor];
+    }else{
+        cell.zhaungtai.backgroundColor = [UIColor colorWithRed:110/255.0 green:183/255.0 blue:105/255.0 alpha:1.0];
+
+
+    }
+    
+    cell.tuipiaobtn.hidden = YES;
+
+    
+    
+    
+    cell.persontype.text = cus.piaotypename;
+    cell.persontype.hidden = NO;
+    cell.zhaungtai.layer.cornerRadius = 4;
+    cell.zhaungtai.layer.masksToBounds = YES;
+    
+    cell.zhaungtai.backgroundColor = [[UIColor redColor]colorWithAlphaComponent:0.7];
+    cell.zhaungtai.text = @"等待支付";
+    cell.tuipiaobtn.layer.borderWidth = 1;
+    cell.tuipiaobtn.layer.borderColor = cell.tuipiaobtn.titleLabel.textColor.CGColor;
+    [cell.tuipiaobtn addTarget:self action:@selector(tuipiaoAction:) forControlEvents:UIControlEventTouchUpInside];
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    return cell;
+}
+-(void)tuipiaoAction:(UIButton *)btn{
+    PersonOrderDetailCell *cell ;
+    UIView *view = btn.superview;
+    while (![view isKindOfClass:[PersonOrderDetailCell class]]) {
+        view = view.superview;
+    }
+    cell = (PersonOrderDetailCell *)view;
+    NSIndexPath *indexPath = [self.mainTableView indexPathForCell:cell];
+    
+    
+    Customer *data = passengersData[indexPath.row];
+    
+    
+    NSDictionary *par = @{@"UToken":UToken,@"orderid":self.orderid,@"ticket_no":data.ticket_no?data.ticket_no:@""};
+    if ([self.tuipiaoUrl isEqualToString:@"grabOfflineReturn/"]) {
+       par =  @{@"UToken":UToken,@"orderid":self.orderid};
+    }
+    
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:par] andUrl:self.tuipiaoUrl showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue] == 1) {
+            
+        }
+        
+    } andError:^(id error) {
+        
+    }];   
+}
+-(NSString *)statusStrwithsts:(NSInteger)stcode{
+    NSString *buttonTitle = @"";
+    switch (stcode) {
+        case 1:
+            buttonTitle = @"等待支付";
+            break;
+        case 2:{
+            buttonTitle = @"退票中";
+            break;
+        }
+        case 3:{
+            buttonTitle = @"退票失败";
+            break;
+        }
+        case 4:{
+            buttonTitle = @"退款中";
+            break;
+        }
+        case 5:{
+            buttonTitle = @"退款完成";
+            break;
+        }
+    default:
+            break;
+    }
+
+    return buttonTitle;
+}
+-(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    
+    return passengersData.count;
+}
+-(void)initPayView{
+    
+    payView = [[PayView alloc]initWithFrame:CGRectMake(0, SHEIGHT - 45, SWIDTH, 45)];
+    payView.clipsToBounds = YES;
+    [payView.moneyBtn addTarget:self action:@selector(changeHeight) forControlEvents:UIControlEventTouchUpInside];
+    [payView.payBtn addTarget:self action:@selector(payAction:) forControlEvents:UIControlEventTouchUpInside];
+
+    [self.view addSubview:payView];
+    
+    NSLog(@"");
+}
+-(void)changeHeight{
+    [UIView animateWithDuration:0.5 animations:^{
+        
+        if (payView.height==45) {
+            payView.height = 45*3;
+            payView.top = SHEIGHT - payView.height;
+        }else{
+            payView.height = 45;
+            payView.top = SHEIGHT - payView.height;
+            
+        }
+    }];
+}
+-(void)payAction:(NSDictionary *)info{
+    NSArray *arr = @[@"微信",@"支付宝"];
+    NSArray *ims = @[@"weixin",@"zhifu"];
+    __weak typeof(self) weakSelf = self;
+    CBAlertView *view = [[CBAlertView alloc]initWithTitle:@"请选择支付方式" actionsTitles:arr imgnames:ims showCancel:YES showSure:YES event:^(id value) {
+        NSLog(@"%@",value);
+        if ([value integerValue]==0) {
+            [weakSelf getPrepayID:1];
+        }else{
+            [weakSelf getPrepayID:2];
+
+        }
+        
+//        [view cancelAct];
+        
+    }];
+ 
+    
+}
+-(void)getPrepayID:(NSInteger)index{
+//    实参字段名			参考值				说明
+//    UToken				*******				登录获取到的utoken
+//    orderid									订单id
+//    insurance								最贵票面保险
+//    all_insurance							保险总额
+//    apitype									1为线上订票，2为线上抢票，3为线下订票，4，线下抢票
+//    paytype									1为微信支付，2为支付宝支付
+    NSString *apitype = @"1";
+   
+    NSDictionary *par = @{@"UToken":UToken,@"orderid":self.orderid,@"insurance":@(3000),@"all_insurance":@3000,@"apitype":apitype,@"paytype":@(index)};
+    __weak typeof(self) weakSelf = self;
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:par] andUrl:@"Action/orderPay/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [LoadingView showAMessage:obj[@"msg"]];
+        });
+        NSLog(@"%@",[obj mj_JSONString]);
+        
+        if ([obj[@"code"] integerValue]==1) {
+            NSString *prepayid = obj[@"data"][@"prepay_id"];
+            
+            if (index==1) {
+                [weakSelf wxPayWithInfo:prepayid];
+            }else{
+                [weakSelf AliPayWithInfo:prepayid];
+                
+            }
+            
+            
+        }
+        [self.mainTableView reloadData];
+        
+    } andError:^(id error) {
+        
+    }];
+
+   
+}
+
+#pragma mark - 微信支付
+-(void)wxPayWithInfo:(NSString *)prePayid{
+//    payRequsestHandler *req = [[payRequsestHandler alloc]init];
+    payRequsestHandler *req = [payRequsestHandler alloc] ;
+    //初始化支付签名对象
+    
+    [req init:APP_ID mch_id:MCH_ID];
+    //设置密钥
+    [req setKey:PARTNER_ID];
+    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+    
+    if ( prePayid != nil) {
+        //获取到prepayid后进行第二次签名
+        
+        NSString    *package, *time_stamp, *nonce_str;
+        //设置支付参数
+        time_t now;
+        time(&now);
+        time_stamp  = [NSString stringWithFormat:@"%ld", now];
+        nonce_str	= [time_stamp md5Hash];
+        
+        package         = @"Sign=WXPay";
+        //第二次签名参数列表
+        NSMutableDictionary *signParams = [NSMutableDictionary dictionary];
+        [signParams setObject: APP_ID        forKey:@"appid"];
+        [signParams setObject: nonce_str    forKey:@"noncestr"];
+        [signParams setObject: package      forKey:@"package"];
+        [signParams setObject: MCH_ID        forKey:@"partnerid"];
+        [signParams setObject: time_stamp   forKey:@"timestamp"];
+        [signParams setObject: prePayid     forKey:@"prepayid"];
+        
+        //生成签名
+        NSString *sign  = [req createMd5Sign:signParams];
+        
+        //添加签名
+        [signParams setObject: sign  forKey:@"sign"];
+        
+        dict = [NSMutableDictionary dictionaryWithDictionary:signParams];
+    }
+    if (dict) {
+        
+        //调起微信支付
+        PayReq *req2             = [[PayReq alloc] init];
+        req2.partnerId           = [dict objectForKey:@"partnerid"];
+        req2.prepayId            = [dict objectForKey:@"prepayid"];
+        req2.nonceStr            = [dict objectForKey:@"noncestr"];
+        req2.timeStamp           = [dict[@"timestamp"] integerValue];
+        req2.package             = [dict objectForKey:@"package"];
+        req2.sign                = [dict objectForKey:@"sign"];
+        [WXApi sendReq:req2];
+        //日志输出
+//        NSLog(@"appid=%@\npartid=%@\nprepayid=%@\nnoncestr=%@\ntimestamp=%ld\npackage=%@\nsign=%@",[dict objectForKey:@"appid"],req.partnerId,req.prepayId,req.nonceStr,(long)req.timeStamp,req.package,req.sign );
+    }
+
+    
+}
+#pragma mark - 支付宝支付
+-(void)AliPayWithInfo:(NSString *)info{
+    [[AlipaySDK defaultService] payOrder:info fromScheme:@"zrggzfbzf" callback:^(NSDictionary *resultDic) {
+        
+    }];
+}
+@end

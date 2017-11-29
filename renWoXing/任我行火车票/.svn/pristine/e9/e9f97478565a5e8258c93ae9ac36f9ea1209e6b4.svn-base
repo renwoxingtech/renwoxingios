@@ -1,0 +1,21 @@
+//
+//  ChoosePerson.h
+//  CommonProject
+//
+//  Created by mac on 2017/1/9.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "BaseViewController.h"
+
+@interface ChoosePerson : BaseViewController
+- (IBAction)addconAct:(UIButton *)sender;
+
+@end
+@interface ChengCheren : UITableViewCell
+@property (weak, nonatomic) IBOutlet UILabel *name;
+@property (weak, nonatomic) IBOutlet UILabel *cktype;
+@property (weak, nonatomic) IBOutlet UILabel *zjlx;
+@property (weak, nonatomic) IBOutlet UIButton *choose;
+
+@end

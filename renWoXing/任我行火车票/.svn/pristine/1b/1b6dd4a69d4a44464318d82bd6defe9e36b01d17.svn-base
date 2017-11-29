@@ -1,0 +1,110 @@
+//
+//  ChangyongPsvc.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/13.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "ChangyongPsvc.h"
+#import "TWSelectCityView.h"
+
+@interface ChangyongPsvc ()
+{
+    NSArray *cityIDArr;
+}
+@end
+
+@implementation ChangyongPsvc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"常用配送信息";
+    UIBarButtonItem *item = [[UIBarButtonItem alloc]initWithTitle:@"保存" style:UIBarButtonItemStylePlain target:self action:@selector(sureChange)];
+    self.navItem.rightBarButtonItem = item;
+//Action/upTake/
+}
+-(void)loadNetData{
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken}] andUrl:@"Action/userInfo/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue] == 1) {
+            [self updateWithInfo:obj];
+        }
+    } andError:nil];
+}
+-(void)updateWithInfo:(NSDictionary *)dic{
+    UserInfo *info = [UserInfo mj_objectWithKeyValues:dic[@"data"]];
+    if (!info) {
+        return;
+    }
+    self.lxr.text = info.take_uname;
+    self.dh.text = info.take_phone;
+    [self.dz setTitle:info.take_pcc forState:UIControlStateNormal];
+    self.xxdz.text = info.take_address;
+    
+}
+-(void)sureChange{
+    if (cityIDArr.count<1) {
+        [LoadingView showAMessage:@"请选择城市"];
+        
+        return;
+    }
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken,@"take_uname":_lxr.text,@"take_phone":_dh.text,@"take_address":_xxdz.text,@"take_province":cityIDArr[0],@"take_city":cityIDArr[1],@"take_county":cityIDArr[2],@"take_address":_xxdz.text}] andUrl:@"Action/upTake/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        NSDictionary *dic = obj;
+        
+        if ([dic[@"code"] integerValue] == 1) {
+            
+            [LoadingView showAMessage:dic[@"result"]];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                POP;
+            });
+        }
+    } andError:^(id error) {
+        
+    }];
+
+}
+-(NSArray *)cityidWithP:(NSString *)pro city:(NSString *)cit cont:(NSString *)cont{
+    
+    NSString *str = [[AppManager documentDirectoryPath] stringByAppendingPathComponent:@"addressinfo.plist"];
+    NSDictionary *dic = [NSDictionary dictionaryWithContentsOfFile:str];
+    NSString *id1 = @"0";
+    NSString *id2 = @"0";
+    NSString *id3 = @"0";
+
+    for (NSString *key1 in dic) {
+        NSDictionary *dic1 = dic[key1];
+        
+        NSDictionary *cities = dic1[@"city"];
+        if ([dic1[@"name"] isEqualToString:pro]) {
+            id1 = dic1[@"id"];
+            for (NSString *key2 in cities.allKeys) {
+                NSDictionary *dic2 = cities[key2];
+                
+                NSDictionary *conties = dic2[@"county"];
+                if ([dic2[@"name"] isEqualToString:cit]) {
+                    id2 = dic2[@"id"];
+                    for (NSString *key3 in conties.allKeys){
+                        NSDictionary *dic3 = conties[key3];
+                        if ([dic3[@"name"] isEqualToString:cont]) {
+                            id3 = dic3[@"id"];
+                        }
+                    }
+                }
+            }
+        }
+        
+    }
+    return @[id1,id2,id3];
+}
+- (IBAction)dizhiact:(UIButton *)sender {
+    
+    TWSelectCityView *city = [[TWSelectCityView alloc] initWithTWFrame:self.view.bounds TWselectCityTitle:@"选择地区"];
+    
+    [city showCityView:^(NSString *proviceStr, NSString *cityStr, NSString *distr) {
+        cityIDArr = [self cityidWithP:proviceStr city:cityStr cont:distr];
+        
+
+         [sender setTitle:[NSString stringWithFormat:@"%@->%@->%@",proviceStr,cityStr,distr] forState:UIControlStateNormal];
+    }];
+}
+@end

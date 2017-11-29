@@ -1,0 +1,94 @@
+//
+//  YaoqingVc.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/10.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "YaoqingVc.h"
+
+@interface YaoqingVc ()
+
+@end
+
+@implementation YaoqingVc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+//    self.mainTableView.backgroundColor = BlueColor;
+    
+}
+-(void)loadNetData{
+    //邀请记录
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken}] andUrl:@"Action/inviteLog/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        NSDictionary *dic = obj;
+        
+        if ([dic[@"code"] integerValue] == 1) {
+            
+            [LoadingView showAMessage:dic[@"result"]];
+            
+        }
+    } andError:^(id error) {
+        
+    }];
+    
+    
+    //提现记录
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken}] andUrl:@"Action/withdrawLog/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        NSDictionary *dic = obj;
+        
+        if ([dic[@"code"] integerValue] == 1) {
+            
+            [LoadingView showAMessage:dic[@"result"]];
+            
+        }
+    } andError:^(id error) {
+        
+    }];
+    
+    
+}
+-(NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{
+    return 2;
+}
+-(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    return 3;
+}
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    static NSString *resue = @"yqcell";
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:resue];
+    if (!cell) {
+        cell = [[UITableViewCell alloc]initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:resue];
+    }
+    cell.backgroundColor = [UIColor clearColor];
+    
+    
+    return cell;
+}
+-(CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath{
+    return 60;
+}
+-(CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section{
+    return 45;
+}
+-(UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section{
+    UIView *view = [[UIView alloc]initWithFrame:CGRectMake(0, 0, self.mainTableView.width, 45)];
+    view.backgroundColor = [UIColor whiteColor];
+    view.layer.cornerRadius = 1;
+    view.layer.masksToBounds = YES;
+    
+    UILabel *lable = [[UILabel alloc]initWithFrame:CGRectMake(10, 7.5, 80, 30)];
+    lable.textColor = [UIColor darkGrayColor];
+//    lable.textAlignment = NSTextAlignmentCenter;
+    if (section==0) {
+        lable.text = @"邀请记录";
+    }else{
+        lable.text = @"提现记录";
+    }
+    lable.font = [UIFont systemFontOfSize:15];
+    [view addSubview:lable];
+    return view;
+}
+@end

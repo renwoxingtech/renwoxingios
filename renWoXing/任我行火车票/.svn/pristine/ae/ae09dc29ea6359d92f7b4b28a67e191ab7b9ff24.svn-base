@@ -1,0 +1,37 @@
+//
+//  ChoosePerson.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/9.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "ChoosePerson.h"
+
+@interface ChoosePerson ()
+
+@end
+
+@implementation ChoosePerson
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view.
+}
+-(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    return 20;
+}
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    static NSString *resue = @"person";
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:resue];
+    if (!cell) {
+        cell = [[UITableViewCell alloc]initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:resue];
+    }
+    cell.backgroundColor = [UIColor clearColor];
+
+    
+    return cell;
+}
+
+
+@end

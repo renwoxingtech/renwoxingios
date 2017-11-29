@@ -1,0 +1,34 @@
+//
+//  FeedBackVc.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/9.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "FeedBackVc.h"
+
+@interface FeedBackVc ()
+
+@end
+
+@implementation FeedBackVc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.navBar.hidden = NO;
+    self.title = @"意见反馈";
+    
+    UIBarButtonItem *his = [[UIBarButtonItem alloc]initWithTitle:@"历史反馈" style:UIBarButtonItemStylePlain target:self action:@selector(gohis)];
+    self.navItem.rightBarButtonItem = his;
+    
+}
+
+-(void)gohis{
+    UIViewController *cv = [self getVCInBoard:nil ID:@"FeedbackHistoryVc"];
+    [self.navigationController pushViewController:cv  animated:YES];
+    
+    
+}
+
+@end

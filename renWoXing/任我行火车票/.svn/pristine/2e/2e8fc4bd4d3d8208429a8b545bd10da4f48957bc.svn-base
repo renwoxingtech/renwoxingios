@@ -1,0 +1,456 @@
+//
+//  NormalOrderVc.m
+//  CommonProject
+//
+//  Created by mac on 2017/2/14.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "NormalOrderVc.h"
+#import "OrderDetailAndPay.h"
+
+@interface NormalOrderVc ()
+{
+    NSInteger cur_tag;
+    NSInteger cur_index;
+    UILabel *wzhLable;
+    
+    
+}
+@end
+
+@implementation OrderCell
+
+
+@end
+@implementation QPOrderCell
+
+
+
+@end
+
+@implementation NormalOrderVc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    UILabel *lable = [[UILabel alloc]initWithFrame:CGRectMake(10, 0, 15, 15)];
+    lable.textAlignment = NSTextAlignmentCenter;
+    lable.text = @"0";
+    lable.backgroundColor = [UIColor redColor];
+    lable.textColor  =[UIColor whiteColor ];
+    lable.layer.cornerRadius = lable.width*0.5;
+    lable.layer.masksToBounds = YES;
+    lable.font = [UIFont systemFontOfSize:12];
+    [self.wzfdd addSubview:lable];
+    
+    wzhLable = lable;
+    wzhLable.left = self.wzfdd.width-5;
+    
+    
+    if (self.isQpdd) {
+        self.wzfdd.hidden = YES;
+        
+        self.title = @"抢票订单";
+        self.taggbgView.hidden = YES;
+        self.tipView.hidden = NO;
+        self.tipView.top = 64+45;
+        UIImage *im = self.renxingddbtn.currentImage;
+        
+        [self.renxingddbtn setTitle:@"12306抢票" forState:UIControlStateNormal];
+        [self.ddbtn12306 setTitle:@"人工线下抢票" forState:UIControlStateNormal];
+        [self.renxingddbtn setImage:self.ddbtn12306.currentImage forState:UIControlStateNormal];
+        [self.ddbtn12306 setImage:im forState:UIControlStateNormal];
+        
+        NSMutableArray *dd12306 = [NSMutableArray array];
+        NSMutableArray *ddrx = [NSMutableArray array];
+
+        [self.mainDataSource addObject:dd12306];
+        [self.mainDataSource addObject:ddrx];
+
+        
+    }else{
+        self.tipView.hidden = YES;
+        self.title = @"普通订单";
+        for (int i=0; i<2; i++) {
+            NSMutableArray *a = [NSMutableArray array];
+            for (int j=0; j<3; j++) {
+                NSMutableArray *b = [NSMutableArray array];
+                [a addObject:b];
+                
+                
+            }
+            [self.mainDataSource addObject:a];
+        }
+
+    }
+    
+    
+}
+
+#pragma mark - 获取数据
+-(void)loadNetData{
+    if (_isQpdd) {
+        [self getQiangPiaoOrderWithIndex:0];
+        [self getQiangPiaoOrderWithIndex:1];
+
+    }else{
+        [self getNormalOrderWithUrl:0];
+        
+        [self getNormalOrderWithUrl:1];
+    }
+}
+-(void)getQiangPiaoOrderWithIndex:(NSInteger)index{
+    NSString *urll = @"Action/grabListOnline/";
+    if(index==1){
+        urll= @"Action/grabListOffline/";
+    }
+    NSDictionary *par = @{@"UToken":UToken};
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:par] andUrl:urll showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        NSLog(@"%@",obj);
+        
+        if ([obj[@"code"] integerValue] == 1) {
+            
+            NSMutableArray <OrderData *>*arr = [OrderData mj_objectArrayWithKeyValuesArray:obj[@"data"]];
+            NSMutableArray *all = self.mainDataSource[index];
+            [all removeAllObjects];
+            [all addObjectsFromArray:arr];
+            
+            [self.mainTableView reloadData];
+        }
+        
+    } andError:^(id error) {
+        
+    }];   
+}
+
+-(void)getNormalOrderWithUrl:(NSInteger)index{
+    NSString *urll = @"Action/buyListOffline/";
+    if(index==1){
+        urll= @"Action/buyListOnline/";
+    }
+    NSDictionary *par = @{@"UToken":UToken};
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:par] andUrl:urll showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue] == 1) {
+            
+            NSMutableArray <OrderData *>*arr = [OrderData mj_objectArrayWithKeyValuesArray:obj[@"data"]];
+            NSMutableArray *all = self.mainDataSource[index][0];
+            [all removeAllObjects];
+            [all addObjectsFromArray:arr];
+            
+            NSMutableArray *yizhifu = self.mainDataSource[index][1];
+            NSMutableArray *weizhifu = self.mainDataSource[index][2];
+            NSMutableArray *sortyizhfu = [NSMutableArray array];
+            NSMutableArray *sortweizhfu = [NSMutableArray array];
+            
+            [arr enumerateObjectsUsingBlock:^(OrderData * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                //                obj.status = [NSString stringWithFormat:@"%d",arc4random()%8+1];
+                if ([obj.status integerValue]>=5) {
+                    [sortyizhfu addObject:obj];
+                } 
+                if ([obj.status integerValue]==2) {
+                    [sortweizhfu addObject:obj];
+                }
+            }];
+            [yizhifu removeAllObjects];
+            [yizhifu addObjectsFromArray:sortyizhfu];
+            [weizhifu removeAllObjects];
+            [weizhifu addObjectsFromArray:sortweizhfu];
+            [self.mainTableView reloadData];
+        }
+        
+    } andError:^(id error) {
+        
+    }];   
+}
+- (IBAction)tagclick:(UIButton *)sender {
+    [UIView animateWithDuration:0.3 animations:^{
+        self.tagbggo.centerX = sender.centerX;
+        
+    }];
+    
+    
+    if ([sender isEqual:self.renxingddbtn]) {
+        cur_tag = 0;
+    }else{
+        cur_tag = 1;
+    }
+    
+    if(_isQpdd){
+        
+        if (cur_tag==0) {
+            self.tiplable.text = @"请凭购票时使用的有效身份证件及时取票乘车";
+        }else{
+            self.tiplable.text = @"将为您配送火车票，请及时关注配送信息";
+            
+        }
+    }
+    [self.mainTableView reloadData];
+}
+- (IBAction)titlebtnclick:(UIButton *)sender {
+    [UIView animateWithDuration:0.3 animations:^{
+        
+        self.titlebggo.centerX = sender.centerX;
+        
+    }];
+    
+    
+    [self.qbdd setTitleColor:[UIColor darkGrayColor] forState:UIControlStateNormal];
+    [self.yzfdd setTitleColor:[UIColor darkGrayColor] forState:UIControlStateNormal];
+    [self.wzfdd setTitleColor:[UIColor darkGrayColor] forState:UIControlStateNormal];
+    
+    [sender setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    
+    if ([sender isEqual:self.qbdd]) {
+        cur_index = 0;
+    }else if ([sender isEqual:self.yzfdd]) {
+        cur_index = 1;
+    }else if ([sender isEqual:self.wzfdd]) {
+        cur_index = 2;
+    }    
+    [self.mainTableView reloadData];
+    
+}
+-(CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath{
+    if (_isQpdd) {
+        return 275;
+    }
+    return 140;
+}
+-(CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section{
+    return 10;
+}
+-(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    if (_isQpdd) {
+        if (cur_tag<self.mainDataSource.count) {
+            
+            NSArray *a  = self.mainDataSource[cur_tag];
+            return a.count;
+        }
+        return 0;
+    }
+    if (cur_tag<self.mainDataSource.count) {
+        
+        NSArray *a  = self.mainDataSource[cur_tag];
+        NSArray *b  = a[cur_index];
+        return b.count;
+    }
+    return 0;
+}
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    //抢票订单相关
+    if (self.isQpdd) {
+        
+        NSArray *a  = self.mainDataSource[cur_tag];
+        
+        OrderData *data = a[indexPath.row];
+        
+        QPOrderCell *cell = [tableView dequeueReusableCellWithIdentifier:@"qpordercell"];
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        
+        cell.qpjieguo.layer.cornerRadius = 4;
+        cell.qpjieguo.layer.masksToBounds = YES;
+        cell.chakan.layer.borderWidth = 1;
+        cell.chakan.layer.cornerRadius = 2;
+        cell.chakan.layer.borderColor = cell.chakan.titleLabel.textColor.CGColor;
+        
+        cell.chufadi.text = data.from_station_name;
+        cell.mudidi.text = data.to_station_name;
+        if (cur_tag==0) {
+            
+            cell.chufariqi.text = data.start_date;
+            cell.checi.text = data.train_codes;
+            cell.zuoxi.text =data.seat_type;
+        }else{
+            cell.chufariqi.text = data.start_time;
+            cell.checi.text = data.checi;
+            NSString *zw = @"";
+            for (NSDictionary *dic in data.zwcodearr) {
+                zw = [zw stringByAppendingString:dic[@"zwname"]];
+                zw = [zw stringByAppendingString:@","];
+
+            }
+            cell.zuoxi.text =  zw;
+        }
+        NSString *qpxx = @"";
+        for (NSDictionary *dic in data.passengers) {
+            qpxx = [qpxx stringByAppendingString:dic[@"passengersename"]];
+            qpxx = [qpxx stringByAppendingString:@","];
+        }
+        cell.qpxinxi.text = qpxx;
+        cell.chakan.userInteractionEnabled = NO;
+        NSString *qpresultStr = [NSString stringWithFormat:@""];
+        cell.qpjieguo.text = qpresultStr;
+        
+        return cell;
+        
+    }else{
+        OrderCell *cell = [tableView dequeueReusableCellWithIdentifier:@"ordercell"];
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        
+        @try {
+            NSArray *a  = self.mainDataSource[cur_tag];
+            NSArray *b  = a[cur_index];
+            OrderData *data = b[indexPath.row];
+            cell.checi.text = data.checi;
+            cell.quxiaobtn.hidden = YES;
+            cell.zfbtn.hidden = YES;
+            cell.quxiaobtn.layer.borderWidth = 1;
+            cell.quxiaobtn.layer.borderColor  = [UIColor grayColor].CGColor;
+            
+            NSString *s1 = [data.train_date substringWithRange:NSMakeRange(5, 5)];
+            s1 = [s1 stringByReplacingOccurrencesOfString:@"-" withString:@"月"];
+            s1 = [s1 stringByAppendingString:@"日 "];
+            if (data.arrive_time.length == 5) {
+                s1 = [s1 stringByAppendingString:data.arrive_time];
+            }
+            s1 = [s1 stringByAppendingString:@"开"];
+            
+            cell.shijian.text = s1;
+            
+            cell.chufadi.text = data.from_station_name;
+            cell.mididdi.text = data.to_station_name;
+            
+            NSDictionary *pass = (NSDictionary *)data.passengers[0];
+            
+            cell.zuoxi.text = [NSString stringWithFormat:@"%@ %@%@",pass[@"zwname"],pass[@"price"]?pass[@"price"]:@"",pass[@"price"]?@"¥":@""];
+            
+            NSString *chengke = @"";
+            for (NSDictionary *pas in data.passengers) {
+                chengke = [chengke stringByAppendingString:[NSString stringWithFormat:@"%@、",pas[@"passengersename"]]];
+            }
+            if (chengke.length>2) {
+                chengke = [chengke substringToIndex:chengke.length-1];
+                chengke = [chengke stringByAppendingString:[NSString stringWithFormat:@"共%lu人",(unsigned long)data.passengers.count]];
+                
+            }
+            cell.chengke.text = chengke;
+            cell.quxiaobtn.hidden = YES;
+            cell.zfbtn.hidden = YES;
+            cell.zhuangtaiBtn.hidden = NO;
+            
+            NSInteger statue = [data.status integerValue];
+            NSString *buttonTitle = @"";
+            switch (statue) {
+                case 1:
+                    buttonTitle = @"占座中";
+                    break;
+                case 2:{
+                    buttonTitle = @"等待支付";
+                    cell.quxiaobtn.hidden = NO;
+                    cell.zfbtn.hidden = NO;
+                    cell.zhuangtaiBtn.hidden = YES;
+                    
+                    break;
+                }
+                case 3:{
+                    buttonTitle = @"订单关闭";
+                    break;
+                }
+                case 5:{
+                    buttonTitle = @"等待出票";
+                    break;
+                }
+                case 6:{
+                    buttonTitle = @"退票中";
+                    break;
+                }
+                case 7:{
+                    buttonTitle = @"退款成功";
+                    break;
+                }
+                case 8:{
+                    buttonTitle = @"等待出票";
+                    break;
+                }
+                case 9:{
+                    buttonTitle = @"已出票";
+                    break;
+                }
+                    
+                default:
+                    break;
+            }
+            
+            cell.zhuangtaiBtn.layer.cornerRadius = 4;
+            cell.zhuangtaiBtn.layer.masksToBounds  = YES;
+            [cell.zhuangtaiBtn setTitle:buttonTitle forState:UIControlStateNormal];
+            [cell.quxiaobtn addTarget:self action:@selector(cancleOrder:) forControlEvents:UIControlEventTouchUpInside];
+            cell.zfbtn.userInteractionEnabled = NO;
+            //            status		订单状态，1：已下单,占座中；2：已占座，等待付费；3：付款取消/超时付款，订单关闭。5：已付款，等待出票；6：退款/退票中；7：退款成功；8：出票请求已发送，等待出票；9：出票成功
+            
+            
+        } @catch (NSException *exception) {
+            
+        } @finally {
+            
+        }
+        
+        
+        
+        
+        return cell;
+        
+    }
+}
+-(void)cancleOrder:(UIButton *)btn{
+    //    
+    OrderCell *cell ;
+    UIView *view = btn.superview;
+    while (![view isKindOfClass:[OrderCell class]]) {
+        view = view.superview;
+    }
+    cell = (OrderCell *)view;
+    NSIndexPath *indexPath = [self.mainTableView indexPathForCell:cell];
+    
+    NSArray *a  = self.mainDataSource[cur_tag];
+    NSArray *b  = a[cur_index];
+    OrderData *data = b[indexPath.row];
+    
+    
+    NSDictionary *par = @{@"UToken":UToken,@"orderid":data.orderid};
+    NSString *url = @"Action/grabOfflineCancel/";
+    if (_isQpdd) {
+        url = cur_tag==0?@"Action/grabOnlineCancel/":@"Action/grabOfflineCancel/";
+    }else{
+        url = cur_tag==0?@"Action/buyOfflineCancel/":@"Action/buyOnlineCancel/";
+    }
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:par] andUrl:url showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue] == 1) {
+            
+        }
+        
+    } andError:^(id error) {
+        
+    }];   
+}
+-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    OrderData *data;
+    if (_isQpdd) {
+        NSArray *a  = self.mainDataSource[cur_tag];
+        
+        data = a[indexPath.row];
+    }else{
+        NSArray *a  = self.mainDataSource[cur_tag];
+        NSArray *b  = a[cur_index];
+        data = b[indexPath.row];
+        
+    }
+    OrderDetailAndPay *vc = (OrderDetailAndPay *)[self getVCInBoard:@"Main" ID:@"OrderDetailAndPay"];
+    vc.orderData = data;
+    vc.orderid = data.orderid;
+    if (_isQpdd) {
+        vc.url = cur_tag==0?@"Action/grabRowOnline/":@"Action/grabRowOffline/";
+        vc.tuipiaoUrl = cur_tag==0?@"Action/grabOnlineReturn/":@"Action/grabOfflineReturn/";
+
+    }else{
+        vc.url = cur_tag==0?@"Action/buyRowOffline/":@"Action/buyRowOnline/";
+        vc.tuipiaoUrl = cur_tag==0?@"Action/buyOfflineReturn/":@"Action/buyOnlineReturn/";
+
+    }
+    vc.title = @"订单详情";
+    PUSH(vc);
+    
+}
+
+@end

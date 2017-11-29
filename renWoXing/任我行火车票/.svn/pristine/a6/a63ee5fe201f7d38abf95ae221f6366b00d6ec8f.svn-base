@@ -1,0 +1,267 @@
+//
+//  LoginVc.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/9.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "LoginVc.h"
+#import "NSString+Hash.h"
+#import "CocoaSecurity.h"
+#import "NSString+Encryption.h"
+#import "RSA.h"
+
+@interface LoginVc ()<UITextFieldDelegate>
+{
+    UIColor *clor;
+    
+    
+}
+@end
+
+@implementation LoginVc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    clor  = self.loginBtn.backgroundColor;
+    
+    
+    self.rigesterBtn.layer.borderColor = BlueColor.CGColor;
+    self.rigesterBtn.layer.borderWidth = 1;
+    
+    NSInteger index = 0;
+    //从车次查询完毕选择联系人进来的
+    
+    if ([self.preObjvalue isKindOfClass:[NSArray class]]) {
+        index = [self.preObjvalue[1] integerValue];
+    }else{
+        //点击个人中心的登录12306
+        index = [self.preObjvalue integerValue];
+    }
+    
+    if (index==1) {
+        self.is12306 = YES;
+        self.tiplable.text = @"登录12306账号";
+        self.rigesterBtn.hidden = YES;
+        self.jizhumima.hidden = NO;
+        self.zidongdenglu.hidden = NO;
+        _phoneField.text = @"zhangxinhuan19";
+        _pwdField.text =@"zhangxinhuan123456";
+
+        
+    }else{
+        NSString *path = [[AppManager documentDirectoryPath] stringByAppendingPathComponent:@"info.archive"];
+        NSString *info = [NSKeyedUnarchiver unarchiveObjectWithFile:path];
+        _phoneField.text = [info componentsSeparatedByString:@"|"].firstObject;
+        _pwdField.text = [info componentsSeparatedByString:@"|"].lastObject;
+        
+        _phoneField.text = @"hechangben";
+        _pwdField.text =@"a111111";
+
+        
+    }
+    
+    
+    [self shophone];
+    [self canLog];
+    [self.view endEditing:YES];
+    
+    
+}
+-(void)shophone{
+    _phoneField.hidden = NO;
+    if (_phoneBtn.height>30) {
+        
+        
+        [UIView animateWithDuration:0.2 animations:^{
+            _phoneBtn.height = 15;
+            _phoneBtn.titleLabel.font = Font(13);
+        }];
+    }
+    UIButton *btn = (UIButton *)_pwdBtn;
+    _pwdField.hidden = NO;
+    
+    if (btn.height>30) {
+        
+        
+        [UIView animateWithDuration:0.2 animations:^{
+            btn.height = 15;
+            btn.titleLabel.font = Font(13);
+        }];
+    }
+}
+-(void)savePwd{
+    NSString *info = [NSString stringWithFormat:@"%@|%@",_phoneField.text,_pwdField.text];
+    NSString *path = [[AppManager documentDirectoryPath] stringByAppendingPathComponent:@"info.archive"];
+    [NSKeyedArchiver archiveRootObject:info toFile:path];
+    
+}
+- (IBAction)tapGes:(UITapGestureRecognizer *)sender {
+    [self.view endEditing:YES];
+    
+}
+-(BOOL)textFieldShouldBeginEditing:(UITextField *)textField{
+    if ([textField isEqual:_phoneField]) {
+        
+    }
+    return YES;
+}
+-(void)canLog{
+    if (_phoneField.text.length<1) {
+        
+        
+        if (_phoneBtn.height<30) {
+            
+            
+            [UIView animateWithDuration:0.2 animations:^{
+                _phoneBtn.height = 44;
+                _phoneBtn.titleLabel.font = Font(15);
+            }];
+        }
+    }
+    
+    if (_pwdField.text.length<1) {
+        
+        if (_pwdBtn.height<30) {
+            
+            
+            [UIView animateWithDuration:0.2 animations:^{
+                _pwdBtn.height = 44;
+                _pwdBtn.titleLabel.font = Font(15);
+            }];
+        }
+    }
+    if (_pwdField.text.length>0) {
+        self.loginBtn.backgroundColor = BlueColor;
+    }else{
+        self.loginBtn.backgroundColor = clor;
+    }
+}
+-(void)textFieldDidEndEditing:(UITextField *)textField{
+    [self canLog];
+}
+-(BOOL)textFieldShouldEndEditing:(UITextField *)textField{
+    return YES;
+}
+-(BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string{
+    if (_pwdField.text.length>0) {
+        self.loginBtn.backgroundColor = BlueColor;
+    }else{
+        self.loginBtn.backgroundColor = clor;
+    }
+    
+    return YES;
+}
+
+- (IBAction)phoeActt:(UIButton *)sender {
+    _phoneField.hidden = NO;
+    if (sender.height>30) {
+        
+        [_phoneField becomeFirstResponder];
+        [UIView animateWithDuration:0.2 animations:^{
+            sender.height = 15;
+            sender.titleLabel.font = Font(13);
+        }];
+    }
+}
+- (IBAction)pwdAct:(id)sender {
+    UIButton *btn = (UIButton *)sender;
+    _pwdField.hidden = NO;
+    
+    if (btn.height>30) {
+        [_pwdField becomeFirstResponder];
+        
+        [UIView animateWithDuration:0.2 animations:^{
+            btn.height = 15;
+            btn.titleLabel.font = Font(13);
+        }];
+    }
+}
+
+- (IBAction)loginAct:(UIButton *)sender {
+    if (_phoneField.text.length<1) {
+        return;
+    }
+    if (_pwdField.text.length<4) {
+        return;
+    }
+#warning 在头文件记录来源，方便跳转
+    //任行登录和12306登录
+    if (!self.is12306) {
+        
+    
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"account":_phoneField.text,@"pwd":_pwdField.text}] andUrl:@"Action/login/" showLoading:NO showMsg:NO isFullUrk:NO andComplain:^(id obj) {
+        NSDictionary *dic = obj;
+        if ([dic[@"code"] integerValue] == 1) {
+            [[NSUserDefaults standardUserDefaults] setBool:1 forKey:@"isrxlogin"];
+            [self savePwd];
+            [[NSUserDefaults standardUserDefaults] setObject:dic[@"data"][@"UToken"] forKey:@"UToken"];
+            
+            
+            [LoadingView showAMessage:@"登录成功"];
+            if ([self.preObjvalue isKindOfClass:NSString.class] &&  [self.preObjvalue isEqualToString:@"appdelegate"]) {
+                UITabBarController *tabb = (UITabBarController *)[UIApplication sharedApplication].keyWindow.rootViewController;
+                
+                [tabb setSelectedIndex:3];
+                
+                POP;
+            }else {
+                POP;
+            }
+            
+            
+        }else{
+            [LoadingView showAMessage:dic[@"msg"]]; 
+        }
+        
+    } andError:^(id error) {
+        
+    }];
+    }else{
+        //12306登录
+        [self login12306Act];
+    }
+    
+}
+-(void)login12306Act{
+
+    NSDictionary *account = @{@"trainAccount":@"zhangxinhuan19",@"pass":@"zhangxinhuan123456"};
+    NSString *kkey = @"v66r9ogtcvtxv3v4xq3gog8fqdbhwmt0";
+    
+    NSString *desSTr = [[account mj_JSONString] desEncryptWithKey:kkey];
+//    desSTr = [desSTr stringByReplacingOccurrencesOfString:@"=" withString:@""];
+//    desSTr = [desSTr stringByReplacingOccurrencesOfString:@"=" withString:@""];
+
+
+    NSString *posturl = [NSString stringWithFormat:@"http://trainorder.ws.hangtian123.com/cn_interface/trainAccount/validate"];
+    NSDictionary *postPar = @{@"data":desSTr,@"accountversion":@"2"};
+
+    [[Httprequest shareRequest] postObjectByParameters:postPar andUrl:posturl showLoading:YES showMsg:YES isFullUrk:YES andComplain:^(id obj) {
+        NSLog(@"");
+        
+        if (self.touchEvent) {
+            POP;
+            self.touchEvent(obj);
+            [[NSUserDefaults standardUserDefaults] setBool:1 forKey:@"is12306login"];
+
+            
+            
+        }
+        
+        
+    } andError:nil];
+    
+    
+    
+}
+- (IBAction)registerAct:(UIButton *)sender {
+    BaseViewController *vcv = (BaseViewController *)[self getVCInBoard:nil ID:@"RegisterVc"];
+    vcv.preObjvalue = self.preObjvalue;
+    
+    PUSH(vcv);
+}
+- (IBAction)jizhu:(UIButton *)sender {
+    sender.selected = !sender.selected;
+}
+@end

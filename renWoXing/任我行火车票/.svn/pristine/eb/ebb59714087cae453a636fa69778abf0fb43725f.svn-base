@@ -1,0 +1,71 @@
+//
+//  YaoqingVc.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/10.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "YaoqingVc.h"
+
+@interface YaoqingVc ()
+
+@end
+
+@implementation YaoqingVc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+//    self.mainTableView.backgroundColor = BlueColor;
+    
+}
+-(void)loadNetData{
+    //邀请记录
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken}] andUrl:@"Action/inviteLog/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        NSDictionary *dic = obj;
+        
+        if ([dic[@"code"] integerValue] == 1) {
+            
+            [LoadingView showAMessage:dic[@"result"]];
+            
+        }
+    } andError:^(id error) {
+        
+    }];
+    
+    
+    //提现记录
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken}] andUrl:@"Action/withdrawLog/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        NSDictionary *dic = obj;
+        
+        if ([dic[@"code"] integerValue] == 1) {
+            
+            [LoadingView showAMessage:dic[@"result"]];
+            
+        }
+    } andError:^(id error) {
+        
+    }];
+    
+    
+}
+-(NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{
+    return 2;
+}
+-(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    return 20;
+}
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    static NSString *resue = @"yqcell";
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:resue];
+    if (!cell) {
+        cell = [[UITableViewCell alloc]initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:resue];
+    }
+    cell.backgroundColor = [UIColor clearColor];
+    
+    
+    return cell;
+}
+
+@end

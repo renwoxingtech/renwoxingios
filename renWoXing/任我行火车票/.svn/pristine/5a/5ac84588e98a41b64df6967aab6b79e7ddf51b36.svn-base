@@ -1,0 +1,136 @@
+//
+//  LoginVc.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/9.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "LoginVc.h"
+
+@interface LoginVc ()<UITextFieldDelegate>
+{
+    UIColor *clor;
+    BOOL is12306;
+    
+}
+@end
+
+@implementation LoginVc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    clor  = self.loginBtn.backgroundColor;
+    
+    self.rigesterBtn.layer.borderColor = BlueColor.CGColor;
+    self.rigesterBtn.layer.borderWidth = 1;
+    
+    
+    NSInteger index = [self.preObjvalue[1] integerValue];
+    if (index==1) {
+        is12306 = YES;
+        self.tiplable.text = @"登录12306账号";
+        self.rigesterBtn.hidden = YES;
+        self.jizhumima.hidden = NO;
+        self.zidongdenglu.hidden = NO;
+    }
+}
+- (IBAction)tapGes:(UITapGestureRecognizer *)sender {
+    [self.view endEditing:YES];
+    
+}
+-(BOOL)textFieldShouldBeginEditing:(UITextField *)textField{
+    if ([textField isEqual:_phoneField]) {
+        
+    }
+    return YES;
+}
+-(void)textFieldDidEndEditing:(UITextField *)textField{
+    if (_phoneField.text.length<1) {
+        
+        
+        if (_phoneBtn.height<30) {
+            
+            
+            [UIView animateWithDuration:0.2 animations:^{
+                _phoneBtn.height = 44;
+                _phoneBtn.titleLabel.font = Font(15);
+            }];
+        }
+    }
+    
+    if (_pwdField.text.length<1) {
+        
+        if (_pwdBtn.height<30) {
+            
+            
+            [UIView animateWithDuration:0.2 animations:^{
+                _pwdBtn.height = 44;
+                _pwdBtn.titleLabel.font = Font(15);
+            }];
+        }
+    }
+    if (_pwdField.text.length>0) {
+        self.loginBtn.backgroundColor = BlueColor;
+    }else{
+        self.loginBtn.backgroundColor = clor;
+    }
+}
+-(BOOL)textFieldShouldEndEditing:(UITextField *)textField{
+       return YES;
+}
+-(BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string{
+    if (_pwdField.text.length>0) {
+        self.loginBtn.backgroundColor = BlueColor;
+    }else{
+        self.loginBtn.backgroundColor = clor;
+    }
+    
+    return YES;
+}
+
+- (IBAction)phoeActt:(UIButton *)sender {
+    _phoneField.hidden = NO;
+    if (sender.height>30) {
+        
+        [_phoneField becomeFirstResponder];
+        [UIView animateWithDuration:0.2 animations:^{
+            sender.height = 15;
+            sender.titleLabel.font = Font(13);
+        }];
+    }
+}
+- (IBAction)pwdAct:(id)sender {
+    UIButton *btn = (UIButton *)sender;
+    _pwdField.hidden = NO;
+    
+    if (btn.height>30) {
+        [_pwdField becomeFirstResponder];
+
+        [UIView animateWithDuration:0.2 animations:^{
+            btn.height = 15;
+            btn.titleLabel.font = Font(13);
+        }];
+    }
+}
+
+- (IBAction)loginAct:(UIButton *)sender {
+    if (is12306) {
+        BaseViewController *vcv = (BaseViewController *)[self getVCInBoard:nil ID:@"ChoosePerson"];
+        vcv.preObjvalue = self.preObjvalue;
+        
+        PUSH(vcv);
+
+    }
+}
+
+- (IBAction)registerAct:(UIButton *)sender {
+    BaseViewController *vcv = (BaseViewController *)[self getVCInBoard:nil ID:@"RegisterVc"];
+    vcv.preObjvalue = self.preObjvalue;
+    
+    PUSH(vcv);
+}
+- (IBAction)jizhu:(UIButton *)sender {
+    sender.selected = !sender.selected;
+}
+@end

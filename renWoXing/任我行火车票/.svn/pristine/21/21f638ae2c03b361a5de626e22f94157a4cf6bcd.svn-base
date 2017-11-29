@@ -1,0 +1,35 @@
+//
+//  RegisterVc.h
+//  CommonProject
+//
+//  Created by mac on 2017/1/10.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "BaseViewController.h"
+
+@interface RegisterVc : BaseViewController
+@property (weak, nonatomic) IBOutlet UILabel *tiplable;
+@property (weak, nonatomic) IBOutlet UIButton *phoneBtn;
+@property (weak, nonatomic) IBOutlet UIButton *pwdBtn;
+@property (weak, nonatomic) IBOutlet UIButton *yanzmBtn;
+@property (weak, nonatomic) IBOutlet UITextField *phoneField;
+@property (weak, nonatomic) IBOutlet UITextField *pwdField;
+
+@property (weak, nonatomic) IBOutlet UITextField *yzmField;
+@property (weak, nonatomic) IBOutlet UIButton *huoquyamBtn;
+- (IBAction)huoquyam:(UIButton *)sender;
+
+@property (weak, nonatomic) IBOutlet UIButton *nextBtn;
+- (IBAction)nextAction:(UIButton *)sender;
+
+@property (weak, nonatomic) IBOutlet UIButton *yqmbtn;
+@property (weak, nonatomic) IBOutlet UITextField *yqmfield;
+- (IBAction)yqmact:(UIButton *)sender;
+- (IBAction)zhuceSureAct:(UIButton *)sender;
+@property (weak, nonatomic) IBOutlet UIButton *zhuceanniu;
+
+@property (weak, nonatomic) IBOutlet UIButton *tiaixieyqr;
+- (IBAction)tianxieAct:(UIButton *)sender;
+@property (nonatomic,assign)BOOL next;
+@end

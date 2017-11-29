@@ -1,0 +1,49 @@
+//
+//  ChangyongPsvc.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/13.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "ChangyongPsvc.h"
+#import "TWSelectCityView.h"
+
+@interface ChangyongPsvc ()
+
+@end
+
+@implementation ChangyongPsvc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"常用配送信息";
+    UIBarButtonItem *item = [[UIBarButtonItem alloc]initWithTitle:@"保存" style:UIBarButtonItemStylePlain target:self action:@selector(sureChange)];
+    self.navItem.rightBarButtonItem = item;
+//Action/upTake/
+}
+-(void)sureChange{
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken,@"take_uname":_lxr.text,@"take_phone":_dh.text,@"take_address":_xxdz.text,@"":@"",@"":@"",@"":@""}] andUrl:@"Action/upTake/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        NSDictionary *dic = obj;
+        
+        if ([dic[@"code"] integerValue] == 1) {
+            
+            [LoadingView showAMessage:dic[@"result"]];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                POP;
+            });
+        }
+    } andError:^(id error) {
+        
+    }];
+
+}
+- (IBAction)dizhiact:(UIButton *)sender {
+    
+    TWSelectCityView *city = [[TWSelectCityView alloc] initWithTWFrame:self.view.bounds TWselectCityTitle:@"选择地区"];
+    
+    [city showCityView:^(NSString *proviceStr, NSString *cityStr, NSString *distr) {
+         [sender setTitle:[NSString stringWithFormat:@"%@->%@->%@",proviceStr,cityStr,distr] forState:UIControlStateNormal];
+    }];
+}
+@end

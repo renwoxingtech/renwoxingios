@@ -1,0 +1,139 @@
+//
+//  ChoosePerson.m
+//  CommonProject
+//
+//  Created by mac on 2017/1/9.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "ChoosePerson.h"
+#import "AddPersonVc.h"
+
+@implementation ChengCheren
+
+
+@end
+
+@interface ChoosePerson ()
+{
+    NSMutableArray *choosedCustomer;
+    
+}
+
+@end
+
+@implementation ChoosePerson
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    if (self.preObjvalue) {
+        self.title = @"选择联系人";
+    }else
+    self.title = @"常用联系人";
+    choosedCustomer = [NSMutableArray array];
+    
+}
+-(void)loadNetData{
+    
+    NSString *utk = UToken;
+    if (!utk) {
+        return;
+    }
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken}] andUrl:@"Action/userContacts/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        [self.mainDataSource removeAllObjects];
+        self.mainDataSource = [Customer mj_objectArrayWithKeyValuesArray:obj[@"data"]];
+        NSArray *orgData= obj[@"data"];
+        [self.mainDataSource enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+            Customer *cus = obj;
+            NSInteger tt =  cus.type;
+            @try {
+                cus.person_id = orgData[idx][@"id"];
+            } @catch (NSException *exception) {
+                cus.person_id = @"0";
+            } @finally {
+                
+            }
+            cus.isSelect = NO;
+            cus.type_name = tt==1?@"成人":@"儿童";
+            
+        }];
+        
+        [self.mainTableView reloadData];
+        
+    } andError:nil];
+}
+-(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    return self.mainDataSource.count;
+}
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    static NSString *resue = @"person";
+    ChengCheren *cell = [tableView dequeueReusableCellWithIdentifier:resue];
+    if (!cell) {
+        cell = [[ChengCheren alloc]initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:resue];
+    }
+    cell.backgroundColor = [UIColor clearColor];
+    
+    
+    Customer *customer = self.mainDataSource[indexPath.row];
+    
+    cell.name.text = customer.name;
+    cell.zjlx.text = customer.id_number;
+    cell.cktype.text = customer.type_name;
+    if (self.preObjvalue) {
+        cell.choose.hidden = NO;
+    }
+    cell.choose.selected = customer.isSelect;
+    [cell.choose addTarget:self action:@selector(choosePerson:) forControlEvents:UIControlEventTouchUpInside];
+    
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    
+    return cell;
+}
+-(void)choosePerson:(UIButton *)btn{
+    UITableViewCell *cell = (UITableViewCell *)btn.superview.superview;
+    NSIndexPath *indexPath = [self.mainTableView indexPathForCell:cell];
+    
+    Customer *cust = self.mainDataSource[indexPath.row];
+    
+    if (choosedCustomer.count>=5) {
+        return;
+    }else cust.isSelect = !cust.isSelect;
+    
+    btn.selected = !btn.selected;
+    [choosedCustomer removeAllObjects];
+    [self.mainDataSource enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        Customer *cus = obj;
+        if (cus.isSelect) {
+            [choosedCustomer addObject:cus];
+        }
+    } ];
+    if (self.touchEvent) {
+        self.touchEvent(choosedCustomer);
+        
+    }
+    
+}
+-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    Customer *cust = self.mainDataSource[indexPath.row];
+    AddPersonVc *vc = (AddPersonVc *)[self getVCInBoard:nil ID:@"AddPersonVc"];
+    vc.isLook = YES;
+    vc.preObjvalue =cust;
+    vc.touchEvent = ^(id value){
+        [self loadNetData];
+        
+    };
+    PUSH(vc);
+    
+}
+
+
+- (IBAction)addconAct:(UIButton *)sender {
+    AddPersonVc *vc = (AddPersonVc *)[self getVCInBoard:nil ID:@"AddPersonVc"];
+
+    vc.touchEvent = ^(id value){
+        [self loadNetData];
+        
+    };
+    PUSH(vc);
+}
+@end

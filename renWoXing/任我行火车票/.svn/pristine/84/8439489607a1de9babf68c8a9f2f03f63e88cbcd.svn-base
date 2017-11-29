@@ -1,0 +1,1436 @@
+//
+//  OrderDetailAndPay.m
+//  CommonProject
+//
+//  Created by mac on 2017/2/7.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "OrderDetailAndPay.h"
+#import "PayView.h"
+#import "CBAlertView.h"
+#import "NSString+Hash.h"
+#import "payRequsestHandler.h"
+#import <AlipaySDK/AlipaySDK.h>
+#import "AppDelegate.h"
+#import "PaySuccessVc.h"
+
+@interface OrderDetailAndPay ()
+{
+    NSMutableArray *passengersData;
+    PayView *payView ;
+    OrderData *res;
+    
+    
+    BOOL is12306Dp;
+    BOOL is12306Qp;
+    BOOL isrxDp;
+    BOOL isrxQp;
+    __block NSInteger timeout;
+    NSArray *baoxianInfo;
+    BOOL isZx;
+    BOOL hasExec;
+    BOOL hasAdd123;
+    NSTimer *timer;
+    
+}
+@end
+@implementation PersonOrderDetailCell
+
+
+
+@end
+@implementation OrderDetailAndPay
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"订单详情";
+    self.bottomView.hidden = YES;
+    
+    UIButton *btn = [[UIButton alloc]initWithFrame:CGRectMake(10, 10, 65, 27)];
+    [btn setImage:[UIImage imageNamed:@""] forState:UIControlStateNormal];
+    [btn addTarget:self action:@selector(cancelOrder:) forControlEvents:UIControlEventTouchUpInside];
+    btn.backgroundColor = BlueColor;
+    btn.titleLabel.font = Font(15);
+    btn.layer.cornerRadius = 4;
+    
+    [btn setTitle:@"取消订单" forState:UIControlStateNormal];
+    btn.tag = 10;
+    UIBarButtonItem *item = [[UIBarButtonItem alloc]initWithCustomView:btn];
+  
+    self.navItem.rightBarButtonItem = item;
+    
+    
+    
+    
+    [self.baoxianSwitch addTarget:self action:@selector(changeBX:) forControlEvents:UIControlEventValueChanged];
+
+    
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleAlipayResult:) name:@"AliPayResultNotify" object:nil];
+    
+    baoxianInfo = [[NSUserDefaults standardUserDefaults] objectForKey:@"baoxianInfo"];
+    [self getBaoxian];
+    res = self.orderData;
+    
+    self.mainTableView.mj_header = nil;
+    self.baoxianview.hidden = YES;
+    
+    UIBarButtonItem *backBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"back-arrow"] style:UIBarButtonItemStylePlain target:self action:@selector(backAction)];
+    self.navItem.leftBarButtonItem = backBarButtonItem;
+    
+    //    ag==0?@"Action/grabRowOnline/":@"Action/grabRowOffline/";
+    //    tag==0?@"Action/buyRowOffline/":@"Action/buyRowOnline/";
+    if ([self.url containsString:@"grabRowOnline"]) {
+        is12306Qp = YES;
+
+    }else  if ([self.url containsString:@"buyRowOnline"]) {
+        is12306Dp = YES;
+    }else  if ([self.url containsString:@"grabRowOffline"]) {
+        isrxQp = YES;
+    }else  if ([self.url containsString:@"buyRowOffline"]) {
+        isrxDp = YES;
+    }
+}
+-(void)init12306Qpdetail{
+    [LoadingView stopLoading];
+    if (hasAdd123) {
+        return;
+    }
+    hasAdd123 = YES;
+    UIView *detailV = [[NSBundle mainBundle] loadNibNamed:@"Qp123DetailView" owner:nil options:nil].firstObject;
+    detailV.frame = CGRectMake(10, 74, SWIDTH-20, 261);
+    
+    [self.view addSubview:detailV];
+    OrderData *data = res;
+    
+    NSString *qpxx = @"";
+    for (NSDictionary *dic in data.passengers) {
+        qpxx = [qpxx stringByAppendingString:dic[@"passengersename"]];
+        qpxx = [qpxx stringByAppendingString:@","];
+    }
+    if (qpxx.length>0) {
+        qpxx = [qpxx substringToIndex:qpxx.length-1];
+    }
+    
+    
+    NSInteger status = [res.status integerValue];
+    
+    
+    NSString *qpresultStr = @"";
+    
+    switch (status) {
+        case 0:
+        {
+            if(res.msg && res.msg.length>0){
+                qpresultStr = res.msg;
+            }else
+                qpresultStr = @" 订单关闭";
+        }
+            
+            break;
+        case 1:
+            qpresultStr = @" 已下单,待付款";
+            break;
+        case 2:
+            //                    qpresultStr = @" 待付款";
+            break;
+        case 3:
+            //                    qpresultStr = @" 已经付款等待抢票";
+            break;
+        case 4:
+            qpresultStr = @" 占座失败/取消占座，等待关闭";
+            break;
+        case 5:
+            qpresultStr = @" 已付款，等待占座出票";
+            break;
+        case 6:
+            qpresultStr = @" 退款/退票中";
+            break;
+        case 7:
+            qpresultStr = @" 退款成功";
+            break;
+        case 8:
+            qpresultStr = @" 等待出票";
+            break;
+        case 9:
+            qpresultStr = @" 出票成功";
+            break;
+        case 10:
+            qpresultStr = @" 出票成功，返还余款";
+            break;
+            
+        default:
+            break;
+    }
+
+    
+    
+    NSArray *titles = @[data.from_station_name?data.from_station_name:@"",data.to_station_name?data.to_station_name:@"",data.start_date?data.start_date:@"",data.train_codes?data.train_codes:@"",data.seat_type?data.seat_type:@"",qpxx,qpresultStr];
+    
+    
+    for (int i=0; i<titles.count; i++) {
+        UILabel *lable = [detailV viewWithTag:i+1];
+        lable.text = titles[i];
+        if (i==titles.count-1) {
+            lable.layer.cornerRadius = 4;
+            lable.layer.masksToBounds = YES;
+        }
+    }
+
+
+}
+-(void)dealloc{
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"AliPayResultNotify" object:nil];
+}
+-(void)viewWillAppear:(BOOL)animated{
+    [super viewWillAppear:animated];
+    if ([self.navigationController respondsToSelector:@selector(interactivePopGestureRecognizer)]) {
+        self.navigationController.interactivePopGestureRecognizer.enabled = NO;
+    }
+}
+-(void)viewWillDisappear:(BOOL)animated{
+    [super viewWillDisappear:animated];
+    [timer invalidate];
+
+    timeout = 0;
+    if ([self.navigationController respondsToSelector:@selector(interactivePopGestureRecognizer)]) {
+        self.navigationController.interactivePopGestureRecognizer.enabled = YES;
+    }
+}
+-(void)getBaoxian{
+    [[Httprequest shareRequest] postObjectByParameters:nil andUrl:@"Index/Insurance/" showLoading:NO showMsg:NO isFullUrk:NO andComplain:^(id obj) {
+        baoxianInfo = obj[@"data"];
+        if (baoxianInfo) {
+            [[NSUserDefaults standardUserDefaults] setObject:baoxianInfo forKey:@"baoxianInfo"];
+            
+        }
+        [self calShowPrice];
+        
+    } andError:nil];
+}
+-(void)backAction{
+    if(self.navigationController.viewControllers.count>=2){
+        NSInteger counn = self.navigationController.viewControllers.count;
+        
+        BaseViewController *vc = self.navigationController.viewControllers[counn-2];
+        if (vc && ![vc isKindOfClass:NSClassFromString(@"NormalOrderVc")]) {
+            [self.navigationController popToRootViewControllerAnimated:YES];
+            return ;
+        }else{
+            POP;
+        }
+    }else
+        POP;    
+}
+-(void)updateStatus{
+    [LoadingView showLoading];
+    [self loadNetData];
+
+}
+-(void)initTopView{
+    NSInteger status = [res.status integerValue];
+    if (status==1 || status==2 ) {
+        self.tiplable.text = @"下单成功";
+    }
+    if (status==1 && isZx == NO && is12306Dp) {
+        isZx = YES;
+        
+            timer = [NSTimer scheduledTimerWithTimeInterval:5 target:self selector:@selector(updateStatus) userInfo:nil repeats:YES];
+
+                [LoadingView showLoading];
+                [self loadNetData];
+
+    }else if(status!=1){
+        
+        [timer invalidate];
+    }
+//   12306抢票 status	 订单状态，0：订单关闭 1：已下单,待付款；4，占座失败/取消占座，等待关闭 5：已付款，等待占座出票；6：退款/退票中；7：退款成功；8：占座出票请求已发送，等待出票；9：出票成功；10；出票成功，返还余款
+
+    NSInteger stat = [res.status integerValue];
+    
+    if (is12306Qp) {
+        if (stat == 6 || stat == 7 || stat == 9 || stat == 10) {
+           
+        }else{
+            [self.view removeAllSubviews];
+            [self.view addSubview:self.navBar];
+            
+            [self init12306Qpdetail];  
+            [self initPayView];
+            return;
+            
+        }
+    }
+    
+    if (status==2 && is12306Dp) {
+        [self initPayView];
+        self.baoxianview.hidden = NO;
+        self.mainTableView.tableFooterView = self.baoxianview;
+        
+        
+        CGFloat hh = passengersData.count*100+72;
+        if (hh>(SHEIGHT-self.mainTableView.top-50)) {
+            hh = (SHEIGHT-self.mainTableView.top-50);
+        }
+        self.mainTableView.height = hh;
+    }else{
+        CGFloat hh = passengersData.count*100;
+        hh = (SHEIGHT-self.mainTableView.top);
+
+        self.mainTableView.height = hh;
+    }
+    if (is12306Dp) {
+//        status		订单状态，0:占座失败 1：已下单,占座中；2：已占座，等待付费；3：付款取消/超时付款，订单关闭。5：已付款，等待出票；6：退款/退票中；7：退款成功；8：出票请求已发送，等待出票；9：出票成功
+        NSString *statusText = @"";
+        switch (status) {
+            case 0:
+            {
+                if(res.msg  && res.msg.length>0){
+                    statusText = res.msg;
+                }else
+                    statusText = @"占座失败";
+            }
+               
+        
+                break;
+            case 1:
+                statusText = @"已下单,占座中";
+                break;
+            case 2:
+                statusText = @"已占座，等待付费";
+                break;
+            case 3:
+                statusText = @"付款取消/超时付款,订单关闭";
+                break;
+            case 4:
+                break;
+            case 5:
+                statusText = @"已付款，等待出票";
+                break;
+            case 6:
+                statusText = @"退款/退票中";
+                break;
+            case 7:
+                statusText = @"退款成功";
+                break;
+            case 8:
+                statusText = @"等待出票";
+                break;
+            case 9:
+                statusText = @"出票成功";
+                break;
+            
+            default:
+                break;
+        }
+        if (status==2) {
+            NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+            NSTimeInterval order_time = [res.seattime integerValue];
+            if (now-order_time<20*60) {
+                
+                [self startDaojishi:20*60-(now-order_time)];
+                
+                
+            }
+        }
+        self.tiplable.text = statusText;
+    }else if (is12306Qp){
+//        status														订单状态，0：订单关闭 1：已下单,待付款；4，占座失败/取消占座，等待关闭 5：已付款，等待占座出票；6：退款/退票中；7：退款成功；8：占座出票请求已发送，等待出票；9：出票成功；10；出票成功，返还余款
+
+        NSString *qpresultStr = @"";
+        
+        switch (status) {
+            case 0:
+            {
+                if(res.msg  && res.msg.length>0){
+                    qpresultStr = res.msg;
+                }else
+                    qpresultStr = @" 订单关闭";
+            }
+                
+                break;
+            case 1:
+                qpresultStr = @" 已下单,待付款";
+                break;
+            case 2:
+                //                    qpresultStr = @" 待付款";
+                break;
+            case 3:
+                //                    qpresultStr = @" 已经付款等待抢票";
+                break;
+            case 4:
+                qpresultStr = @" 占座失败/取消占座，等待关闭";
+                break;
+            case 5:
+                qpresultStr = @" 已付款，等待占座出票";
+                break;
+            case 6:
+                qpresultStr = @" 退款/退票中";
+                break;
+            case 7:
+                qpresultStr = @" 退款成功";
+                break;
+            case 8:
+                qpresultStr = @" 等待出票";
+                break;
+            case 9:
+                qpresultStr = @" 出票成功";
+                break;
+            case 10:
+                qpresultStr = @" 出票成功，返还余款";
+                break;
+    
+            default:
+                break;
+        }
+        if (status==1) {
+            NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+            NSTimeInterval order_time = [res.order_time integerValue];
+            if (now-order_time<20*60) {
+                
+                [self startDaojishi:20*60-(now-order_time)];
+                
+                
+            }
+        }
+        self.tiplable.text = qpresultStr;
+    }else if(isrxQp || isrxDp){
+        NSString *qpresultStr = [NSString stringWithFormat:@""];
+// 线下订票   status				订单状态  0:无票 1:已下单,等待付款 2.取消订单 3.已付款，等待出票 4.已退款； 5.已被提取/锁定状态 6.已出票/锁定状态 7.已发送/锁定状态        
+        switch (status) {
+            case 0:
+            {
+                if(res.msg  && res.msg.length>0){
+                    qpresultStr = res.msg;
+                }else
+                qpresultStr = @" 无票";
+            }
+                break;
+
+            case 1:
+                qpresultStr = @" 已下单,等待付款";
+                break;
+            case 2:
+                qpresultStr = @" 订单已取消";
+                self.navItem.rightBarButtonItem = nil;
+                break;
+            case 3:
+                if (isrxDp) {
+//                    status				订单状态  0:无票 1:已下单,等待付款 2.取消订单 3.已付款，等待出票 4.已退款； 5.已被提取/锁定状态 6.已出票/锁定状态 7.已发送/锁定状态
+                    qpresultStr = @"已付款，等待出票";
+                }else
+                qpresultStr = @" 已经付款等待抢票";
+                break;
+            case 4:
+                qpresultStr = @" 已退款";
+                break;
+            case 5:
+                qpresultStr = @" 已被提取";
+                break;
+            case 6:
+                qpresultStr = @" 已出票";
+                break;
+            case 7:
+                qpresultStr = @" 已发送";
+                break;
+                
+            default:
+                break;
+        }
+        CGFloat bottH = 0;
+        
+        if (status==1) {
+            NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+            NSTimeInterval order_time = [res.order_time integerValue];
+            if (now-order_time<20*60) {
+                
+                [self startDaojishi:20*60-(now-order_time)];
+                
+                
+            }
+            bottH = 50;
+            [self initPayView];
+        }else{
+            self.tiplable.text = qpresultStr;
+
+        }
+        
+        //更新配送信息视图
+        {
+            self.shoujianren.text = res.take_uname;
+            self.shoujihao.text = res.take_phone;
+            if (!res.take_province) {
+                self.peisongdizhi.text = [NSString stringWithFormat:@"%@",res.from_station_name];
+                
+            }else{
+                NSString *dizhiStr = [NSString stringWithFormat:@"%@ %@ %@ %@",res.take_province,res.take_city,res.take_county,res.take_address];
+
+                
+                NSMutableAttributedString *content = [[NSMutableAttributedString alloc]initWithString:dizhiStr];
+                NSRange contentRange = {0,[content length]};
+                [content addAttribute:NSUnderlineStyleAttributeName value:[NSNumber numberWithInteger:NSUnderlineStyleSingle] range:contentRange];
+                
+                self.peisongdizhi.attributedText = content;
+            }
+            
+            UIButton *btn = [[UIButton alloc]initWithFrame:self.peisongdizhi.frame];
+            [btn setImage:[UIImage imageNamed:@""] forState:UIControlStateNormal];
+            [btn addTarget:self action:@selector(seeMail:) forControlEvents:UIControlEventTouchUpInside];
+            btn.backgroundColor = [UIColor clearColor];
+            [btn setTitle:@"" forState:UIControlStateNormal];
+            btn.tag = 10;
+            [self.peisongdizhi.superview addSubview:btn];
+            Customer *cus = res.passengers.firstObject;
+            if ([cus isKindOfClass:[NSDictionary class]]) {
+                cus = [Customer mj_objectWithKeyValues:cus];
+            }
+            CGFloat singleIns = [cus.insurance integerValue];//保险
+            if (singleIns<50) {
+                singleIns = singleIns*100;
+            }
+            
+            self.tlyiwaixian.text = [NSString stringWithFormat:@"¥%.1f元/份",singleIns/100.0];
+        }
+        self.bottomView.hidden = NO;
+        self.mainTableView.tableFooterView = self.bottomView;
+        self.bottomView.userInteractionEnabled = YES;
+        CGFloat hh = passengersData.count*100+self.bottomView.height;
+        
+        if (hh>(SHEIGHT-self.mainTableView.top-bottH)) {
+            hh = (SHEIGHT-self.mainTableView.top-bottH);
+        }
+        self.mainTableView.height = hh;
+        
+    }
+    
+    
+    
+    self.chufadi.text = res.from_station_name;
+    self.mudidi.text = res.to_station_name;
+    self.chufashijian.text = res.start_time;
+    self.daodashijian.text = res.arrive_time;
+    
+    
+    self.chufadi.text = res.from_station_name;
+    self.mudidi.text = res.to_station_name;
+    
+    //    self.lishi.text = [NSString stringWithFormat:@"%@分",[res.runtime stringByReplacingOccurrencesOfString:@":" withString:@"时"] ];
+    
+    NSString *chufatime = [res.start_time substringWithRange:NSMakeRange(11, 5)];
+    NSString *daodatime = [res.arrive_time substringWithRange:NSMakeRange(11, 5)];
+    self.chufashijian.text = chufatime;
+    self.daodashijian.text = daodatime;
+    NSString *n  = [res.runtime stringByReplacingOccurrencesOfString:@":" withString:@"时"] ;
+    self.lishi.text = [n stringByAppendingString:@"分"];
+    self.checi.text = res.checi;
+    //    if ([res.start_station_name isEqualToString:res.from_station_name]) {
+    //        if ([res.end_station_name isEqualToString:res.to_station_name]) {
+    //            self.indicatorView.image = [UIImage imageNamed:@"qi-zhong"];
+    //        }else{
+    //            self.indicatorView.image = [UIImage imageNamed:@"qi-zhuan"];
+    //            
+    //        }
+    //    }else{
+    //        if ([res.end_station_name isEqualToString:res.to_station_name]) {
+    //            self.indicatorView.image = [UIImage imageNamed:@"zhuan-zhong"];
+    //        }else{
+    //            self.indicatorView.image = [UIImage imageNamed:@"zhuan-zhuan"];
+    //            
+    //        }
+    //    }
+    
+    //    20170215
+    
+    
+    NSDate *date1 = [AppManager dateFromString:res.start_time format:@"yyyy-MM-dd HH:mm:ss"];
+    NSString *wek = [self showWeekOrDate:date1];
+    NSString *date1Str = [AppManager stringFromDate:date1 format:@"yyyy年MM月dd日 HH:mm"];
+    
+    
+    NSString *fache =  [NSString stringWithFormat:@"%@ 开(%@)",date1Str,wek] ;
+    self.facehtime.text = fache;
+    NSDate *date2 = [NSDate date];
+    NSTimeInterval time=[date1 timeIntervalSinceDate:date2];
+    
+    int days=((int)time)/(3600*24);
+    int hours=((int)time)%(3600*24)/3600;
+    int minite=(((int)time)%(3600*24)%3600)/60;
+    
+    NSString *dateContent = @"已发车";
+    
+    if (days>0) {
+        dateContent = [[NSString alloc] initWithFormat:@"剩余 %i天%i小时%i分",days,hours,minite];
+    }else if(hours>=0 && minite>=0){
+        dateContent = [[NSString alloc] initWithFormat:@"剩余 %i小时%i分",hours,minite];
+        
+    }
+    self.shengyuLab.text = dateContent;
+    self.shengyuLab.layer.cornerRadius = 4;
+    self.shengyuLab.layer.masksToBounds = YES;
+    [self.shengyuLab sizeToFit];
+    self.shengyuLab.width+=10;
+    self.shengyuLab.height+=8;
+    [self.mainTableView reloadData];
+    
+    
+    
+}
+
+
+-(void)seeMail:(UIButton *)btn{
+    //res.mailno = @"3906530152697";
+    
+    if (res.mailno.length<1) {
+        [LoadingView showAMessage:@"暂无配送信息"];
+        return;
+    }
+    NSString *orderNo = [NSString stringWithFormat:@"http://m.kuaidi100.com/index_all.html?postid=%@",res.mailno];
+    BaseViewController *vc = (BaseViewController *)[self getVCInBoard:nil ID:@"WebViewController"];
+    vc.navBar.hidden = NO;
+    vc.preObjvalue = orderNo;
+    
+    PUSH(vc);
+    
+}
+-(void)startDaojishi:(NSInteger)time{
+    timeout = time; //倒计时时间
+
+    if (hasExec) {
+        return;
+    }
+    hasExec = YES;
+    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+    dispatch_source_t _timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0,queue);
+    dispatch_source_set_timer(_timer,dispatch_walltime(NULL, 0),1.0*NSEC_PER_SEC, 0); //每秒执行
+    dispatch_source_set_event_handler(_timer, ^{
+        if(timeout<=0){ //倒计时结束，关闭
+            dispatch_source_cancel(_timer);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                _tiplable.text = @"超时未支付，订单已取消";
+                
+            });
+        }else{
+            //            int minutes = timeout / 60;
+            NSInteger seconds = timeout;
+            NSInteger min = seconds/60;
+            NSInteger sec = (seconds%60);
+            
+            NSString *strTime = [NSString stringWithFormat:@"下单成功 请您在%ld分%ld秒内支付", min,sec];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                _tiplable.text = strTime;
+                
+                
+            });
+            timeout--;
+            
+        }
+    });
+    dispatch_resume(_timer);
+    
+    
+}
+-(NSString *)showWeekOrDate:(NSDate *)date{
+    NSString *dateStr = [AppManager stringFromDate:date format:@"yyyy-MM-dd"];
+    NSString *today = [AppManager stringFromDate:[NSDate date] format:@"yyyy-MM-dd"];
+    NSString *tomorrow = [AppManager stringFromDate:[NSDate dateWithTimeIntervalSinceNow:3600*24] format:@"yyyy-MM-dd"];
+    NSString *afterTom = [AppManager stringFromDate:[NSDate dateWithTimeIntervalSinceNow:3600*24*2] format:@"yyyy-MM-dd"];
+    NSString *newStr = @"";
+    
+    if ([dateStr isEqualToString:today]) {
+        newStr = @"今天";
+    }else
+        if ([dateStr isEqualToString:tomorrow]) {
+            newStr = @"明天";
+        }else
+            if ([dateStr isEqualToString:afterTom]) {
+                newStr = @"后天";
+            }else
+                newStr = [OrderDetailAndPay getWeekDayFordate:[date timeIntervalSince1970]];
+    return newStr;
+    
+}
+//根据时间戳获取星期几
++ (NSString *)getWeekDayFordate:(long long)data
+{
+    NSArray *weekday = [NSArray arrayWithObjects: [NSNull null], @"周日", @"周一", @"周二", @"周三", @"周四", @"周五", @"周六", nil];
+    
+    NSDate *newDate = [NSDate dateWithTimeIntervalSince1970:data];
+    NSCalendar *calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
+    NSDateComponents *components = [calendar components:NSWeekdayCalendarUnit fromDate:newDate];
+    
+    NSString *weekStr = [weekday objectAtIndex:components.weekday];
+    return weekStr;
+}
+
+-(void)cancelOrder:(UIButton *)btn{
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"确定取消该订单吗？" message:nil preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *act1 = [UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        
+        [self sureCancelOrder:nil];
+    }];
+    [alert addAction:act1];
+    
+    UIAlertAction *act2 = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        
+    }];
+    [alert addAction:act2];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+-(void)sureCancelOrder:(UIButton *)btn{
+    
+    NSDictionary *par = @{@"UToken":UToken,@"orderid":res.orderid};
+    NSString *url = @"Action/grabOfflineCancel/";
+    if ([self.url containsString:@"grabRowOnline"]) {
+        is12306Qp = YES;
+    }else  if ([self.url containsString:@"buyRowOnline"]) {
+        is12306Dp = YES;
+    }else  if ([self.url containsString:@"grabRowOffline"]) {
+        isrxQp = YES;
+    }else  if ([self.url containsString:@"buyRowOffline"]) {
+        isrxDp = YES;
+    } 
+    if (isrxQp) {
+        url = @"Action/grabOfflineCancel/";
+    }else if (isrxDp) {
+        url = @"Action/buyOfflineCancel/";
+    }else if (is12306Qp) {
+        url = @"Action/grabOnlineCancel/";
+        if ([res.status integerValue]==1) {
+            url= @"Action/grabOnlineClose/";
+        }
+    }else if (is12306Dp) {
+        url = @"Action/buyOnlineCancel/";
+    }
+    
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:par] andUrl:url showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue] == 1) {
+            [LoadingView showAMessage:@"取消成功"];
+            timeout = 0;
+            payView.hidden = YES;
+            [self loadNetData];
+            if (self.touchEvent) {
+                self.touchEvent(@"");
+            }
+            [self.navigationController popViewControllerAnimated:YES];
+            
+        }
+        
+    } andError:^(id error) {
+        
+    }];   
+}
+-(void)loadNetData{
+    
+    if (!self.orderid) {
+        [LoadingView showAMessage:@"订单号为空"];
+        return;
+    }
+    if (!self.url) {
+        [LoadingView showAMessage:@"url为空"];
+        
+        return;
+    }
+    NSDictionary *par = @{@"UToken":UToken,@"orderid":self.orderid};
+    
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:par] andUrl:self.url showLoading:NO showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue]==1) {
+            NSArray *a = obj[@"data"][@"passengers"];
+            res = [OrderData mj_objectWithKeyValues:obj[@"data"]];
+            
+            [AppManager formatJsonStr:[obj mj_JSONString]];
+            
+            passengersData = [Customer mj_objectArrayWithKeyValuesArray:a];
+            
+            [self initTopView];
+           
+            
+        }
+        [self.mainTableView reloadData];
+        
+    } andError:^(id error) {
+        
+    }];
+}
+//钱数都为分
+-(void)showPrice:(CGFloat)buyedPrice insurance:(CGFloat)insurance count:(NSInteger)count{
+    //    CGFloat buyedPrice = [self getMaxPrice];
+    CGFloat singleIns = 0.0;
+    singleIns = insurance;
+    
+    _baoxianlable.text = [NSString stringWithFormat:@"%.1f元/份",singleIns/100.0];
+    
+    payView.baoxianPrice.text =  [NSString stringWithFormat:@"%.1f元/份x%ld",singleIns/100.0,count];
+    payView.chepiaoPrice.text = [NSString stringWithFormat:@"¥%.1fx%ld",buyedPrice,count];
+    CGFloat totalprice = singleIns/100.0*count+buyedPrice*count;
+    [payView.moneyBtn setTitle:[NSString stringWithFormat:@"实付款:%.1f",totalprice] forState:UIControlStateNormal];
+    
+}
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    PersonOrderDetailCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PersonOrderDetailCell"];
+    Customer *cus = passengersData[indexPath.row];
+    cell.name.text = cus.passengersename;
+    cell.numbern_id.text = cus.passportseno;
+    cell.zhengjianleixing.text = cus.passporttypeseidname;
+    cell.zauweixinxi.text = [NSString stringWithFormat:@"%@",cus.zwname];
+    cell.yiwaixian.hidden = ![cus.insurance floatValue];
+    cell.yiwaixian.text = @"铁路意外险已购买";
+    cell.zhaungtai.backgroundColor = [[UIColor redColor] colorWithAlphaComponent:0.7];
+
+    cell.jiage.hidden = YES;
+    NSString *price = cus.max_price;
+    if (!price) {
+        price = cus.price;
+    }
+    if (price) {
+        cell.jiage.hidden = NO;
+        if (is12306Dp || is12306Qp) {
+            cell.jiage.text  = [NSString stringWithFormat:@"¥%.1f元",[price floatValue]];
+        }else
+            cell.jiage.text  = [NSString stringWithFormat:@"¥%.1f元",[price floatValue]/100.0];
+    }
+    
+    //12306抢票和12306订票的乘客状态
+//    status		用户订票状态；0：占座失败 1：正常；2：退票中；3：退票失败；4退票成功，退款中；5退款完成
+    if (is12306Dp || is12306Qp) {
+        NSInteger status = [cus.status integerValue];
+        cell.zhaungtai.text = [self statusStrwithsts:status];
+        cell.zhaungtai.hidden = NO;
+
+        if (status==1) {
+            cell.zhaungtai.text = self.tiplable.text;
+            if (self.tiplable.text.length>6) {
+                cell.zhaungtai.hidden = YES;
+                if ([self.tiplable.text containsString:@"下单成功"]) {
+                    cell.zhaungtai.text = @"等待支付";
+                    cell.zhaungtai.hidden = NO;
+                }
+            }else{
+                cell.zhaungtai.hidden = NO;
+                
+            }
+        }
+    }else{
+        cell.zhaungtai.text = self.tiplable.text;
+        if (self.tiplable.text.length>6) {
+            cell.zhaungtai.hidden = YES;
+            
+        }else{
+            cell.zhaungtai.hidden = NO;
+            
+        }
+        if ([self.tiplable.text containsString:@"下单成功"]) {
+            cell.zhaungtai.text = @"等待支付";
+            cell.zhaungtai.hidden = NO;
+        }
+    }
+    
+
+    
+    ///显示座位信息
+    NSString *zw = @"";
+    for (NSDictionary *dic in res.zwcodearr) {
+        zw = [zw stringByAppendingString:dic[@"zwname"]];
+        zw = [zw stringByAppendingString:@","];
+    }
+    if (zw.length>0) {
+        zw = [zw substringToIndex:zw.length-1];
+    }
+    cell.zauweixinxi.text  = zw;
+    if (is12306Dp) {
+        cell.zauweixinxi.text = cus.zwname;
+    }else if(is12306Qp){
+        cell.zauweixinxi.text = res.seat_type;
+        
+    }else if(isrxDp){
+        cell.zauweixinxi.text = cus.zwname;
+
+    }else if(isrxQp && cus.zwname.length<1){
+        NSString *zw = @"";
+        for (NSDictionary *dic in res.zwcodearr) {
+            zw = [zw stringByAppendingString:dic[@"zwname"]];
+            zw = [zw stringByAppendingString:@","];
+        }
+        if (zw.length>0) {
+            zw = [zw substringToIndex:zw.length-1];
+        }
+        cell.zauweixinxi.text  = zw;
+
+    }
+    if ([self.tiplable.text containsString:@"下单成功"]) {
+        cell.zhaungtai.text = @"等待支付";
+        cell.zhaungtai.hidden = NO;
+    }
+    cell.zauweixinxi.text = [NSString stringWithFormat:@"%@ %@",cell.zauweixinxi.text,cus.cxin?cus.cxin:@""];
+
+
+    cell.persontype.text = cus.piaotypename;
+    cell.persontype.hidden = NO;
+    cell.zhaungtai.layer.cornerRadius = 4;
+    cell.zhaungtai.layer.masksToBounds = YES;
+    cell.tuipiaobtn.layer.borderWidth = 1;
+    ///退款按钮显示
+//    12306订票 status		订单状态，0:占座失败 1：已下单,占座中；2：已占座，等待付费；3：付款取消/超时付款，订单关闭。5：已付款，等待出票；6：退款/退票中；7：退款成功；8：出票请求已发送，等待出票；9：出票成功
+// 线下订票   status				订单状态  0:无票 1:已下单,等待付款 2.取消订单 3.已付款，等待出票 4.已退款； 5.已被提取/锁定状态 6.已出票/锁定状态 7.已发送/锁定状态
+
+    if (is12306Dp) {
+        if ([res.status integerValue]==5) {
+            cell.tuipiaobtn.hidden = NO;
+        }else{
+            cell.tuipiaobtn.hidden = YES;
+        }
+        
+    }
+    
+    cell.tuipiaobtn.hidden = YES;
+ 
+    if (isrxDp || isrxQp) {
+        if ([res.status integerValue]==3) {
+            cell.tuipiaobtn.hidden = NO;
+        }else{
+            cell.tuipiaobtn.hidden = YES;
+        }
+    }
+    if (is12306Dp && [res.status integerValue] ==9 && [cus.status integerValue]==1) {
+        cell.tuipiaobtn.hidden = NO;
+        
+    }
+    if (is12306Qp || is12306Dp) {
+        if ([cus.status integerValue]==1) {
+            cell.zhaungtai.text = @"出票成功";
+        }
+    }
+   
+    if (is12306Qp && [res.status integerValue] == 10 &&  [cus.status integerValue]==1) {
+        cell.tuipiaobtn.hidden = NO;
+    }
+    cell.tuipiaobtn.layer.borderColor = cell.tuipiaobtn.titleLabel.textColor.CGColor;
+    [cell.tuipiaobtn addTarget:self action:@selector(tuipiaoAction:) forControlEvents:UIControlEventTouchUpInside];
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    return cell;
+}
+-(void)tuipiaoAction:(UIButton *)btn{
+    __weak typeof(self) weakSelf = self;;
+    NSString *m1 = @"确定要退票吗？";
+    if (isrxDp || isrxQp) {
+        m1 = @"同一订单的所有车票都将退票，确定要退票吗？";
+    }
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"提示" message:m1 preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *act1 = [UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        PersonOrderDetailCell *cell ;
+        UIView *view = btn.superview;
+        while (![view isKindOfClass:[PersonOrderDetailCell class]]) {
+            view = view.superview;
+        }
+        cell = (PersonOrderDetailCell *)view;
+        NSIndexPath *indexPath = [weakSelf.mainTableView indexPathForCell:cell];
+        
+        
+        Customer *data = passengersData[indexPath.row];
+        
+//        
+        NSDictionary *par = @{@"UToken":UToken,@"orderid":self.orderid,@"ticket_no":data.ticket_no?data.ticket_no:@""};
+        if ([weakSelf.tuipiaoUrl isEqualToString:@"grabOfflineReturn/"]) {
+            par =  @{@"UToken":UToken,@"orderid":self.orderid};
+        }
+        
+        [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:par] andUrl:weakSelf.tuipiaoUrl showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+            if ([obj[@"code"] integerValue] == 1) {
+                [LoadingView showAMessage:@"操作成功"];
+                [weakSelf loadNetData];
+            }
+            
+        } andError:^(id error) {
+            
+        }];   
+
+    }];
+    [alert addAction:act1];
+  
+    UIAlertAction *act3 = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        
+    }];
+    [alert addAction:act3];
+    [self presentViewController:alert animated:YES completion:nil];
+
+    
+    
+}
+-(NSString *)statusStrwithsts:(NSInteger)stcode{
+    NSString *buttonTitle = @"";
+    //    status		用户订票状态；0：占座失败 1：正常；2：退票中；3：退票失败；4退票成功，退款中；5退款完成
+
+    switch (stcode) {
+        case 0:
+            buttonTitle = @"占座失败";
+            break;
+            
+        case 1:
+            buttonTitle = self.tiplable.text;
+            break;
+        case 2:{
+            buttonTitle = @"退票中";
+            break;
+        }
+        case 3:{
+            buttonTitle = @"退票失败";
+            break;
+        }
+        case 4:{
+            buttonTitle = @"退票成功";
+            break;
+        }
+        case 5:{
+            buttonTitle = @"退款成功";
+            break;
+        }
+        default:
+            break;
+    }
+    
+    return buttonTitle;
+}
+-(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    
+    return passengersData.count;
+}
+-(void)initPayView{
+    if (is12306Qp) {
+        NSInteger status = [res.status integerValue];
+//        status		订单状态，0：订单关闭 1：已下单,待付款；4，占座失败/取消占座，等待关闭 5：已付款，等待占座出票；6：退款/退票中；7：退款成功；8：占座出票请求已发送，等待出票；9：出票成功；10；出票成功，返还余款
+        
+        if (status==1 || status==5) {
+            UIButton *btn = [[UIButton alloc]initWithFrame:CGRectMake(10, 10, 65, 27)];
+            [btn setImage:[UIImage imageNamed:@""] forState:UIControlStateNormal];
+            [btn addTarget:self action:@selector(cancelOrder:) forControlEvents:UIControlEventTouchUpInside];
+            btn.backgroundColor = BlueColor;
+            btn.titleLabel.font = Font(15);
+            btn.layer.cornerRadius = 4;
+            
+            [btn setTitle:@"取消订单" forState:UIControlStateNormal];
+            btn.tag = 10;
+            UIBarButtonItem *item = [[UIBarButtonItem alloc]initWithCustomView:btn];
+            if (status==1) {
+                
+                self.navItem.rightBarButtonItem = item;
+            }
+            
+        }
+        if (status!=1) {
+            return;
+        }
+    }
+    if (!payView) {
+        
+        payView = [[PayView alloc]initWithFrame:CGRectMake(0, SHEIGHT - 45, SWIDTH, 45)];
+        payView.clipsToBounds = YES;
+        [payView.moneyBtn addTarget:self action:@selector(changeHeight) forControlEvents:UIControlEventTouchUpInside];
+        [payView.payBtn addTarget:self action:@selector(payAction:) forControlEvents:UIControlEventTouchUpInside];
+        
+        [self.view addSubview:payView];
+    }
+    
+    [self calShowPrice];
+    NSLog(@"");
+}
+-(void)changeHeight{
+    //        126  213
+    [UIView animateWithDuration:0.5 animations:^{
+        
+        if (payView.height==45) {
+            if (is12306Dp || is12306Qp) {
+                payView.height = 127;
+                
+            }else
+                payView.height = 214;
+            payView.top = SHEIGHT - payView.height;
+        }else{
+            payView.height = 45;
+            payView.top = SHEIGHT - payView.height;
+            
+        }
+    }];
+}
+-(void)calShowPrice{
+    if (is12306Dp || is12306Qp) {
+        [self show12306Price];
+        return;
+    }
+    Customer *cus = res.passengers.firstObject;
+    if ([cus isKindOfClass:[NSDictionary class]]) {
+        cus = [Customer mj_objectWithKeyValues:cus];
+    }
+    CGFloat buyedPrice = [cus.max_price floatValue];//单张最高票价
+    CGFloat purch_fee = [cus.purch_fee floatValue];//手续费
+    CGFloat singleIns = [cus.insurance integerValue];//保险
+    CGFloat express_fee = [res.express_fee floatValue];//配送费
+    
+    NSInteger count = res.passengers.count;
+    if (count==0) {
+        count = 1;
+    }
+    if (singleIns<50) {
+        singleIns = singleIns*100;
+    }
+    payView.chepiaoPrice.text = [NSString stringWithFormat:@"¥%.1f元x%ld",buyedPrice/100.0,count];
+    payView.baoxianPrice.text = [NSString stringWithFormat:@"¥%.1f元x%ld",singleIns/100.0,count];
+    if (!self.baoxianSwitch.isOn && is12306Dp) {
+        payView.baoxianPrice.text = @"无";
+    }
+    payView.peisongfei.text = [NSString stringWithFormat:@"¥%.1f元",express_fee/100.0];
+    payView.shouxufei.text = [NSString stringWithFormat:@"¥%.1f元x%ld",purch_fee/100.0,count];
+    
+    CGFloat totalprice = singleIns*count+buyedPrice*count+purch_fee*count + express_fee;
+    if (is12306Dp) {
+        totalprice = singleIns*count+buyedPrice*count;
+        
+    }
+    [payView.moneyBtn setTitle:[NSString stringWithFormat:@"实付款:¥%.1f元",totalprice/100.0] forState:UIControlStateNormal];
+    
+    self.baoxianlable.text = [NSString stringWithFormat:@"铁路意外险  %d元/份",(int)singleIns/100];
+    
+}
+-(void)show12306Price{
+    
+    Customer *cus = res.passengers.firstObject;
+    if ([cus isKindOfClass:[NSDictionary class]]) {
+        cus = [Customer mj_objectWithKeyValues:cus];
+    }
+    CGFloat buyedPrice = [cus.price floatValue];//单张最高票价
+    CGFloat singleIns = [cus.insurance integerValue];//保险
+    
+    if (is12306Qp) {
+        buyedPrice = [res.max_price floatValue];
+        
+    }
+    
+    NSInteger instype = 1;
+    if (is12306Qp) {
+        instype  = 2;
+    }
+    
+    if (baoxianInfo) {
+        for (NSDictionary *ins in baoxianInfo) {
+            if (ins[@"insurance_type"] && [ins[@"insurance_type"] integerValue]==instype) {
+                CGFloat min = [ins[@"min_val"] floatValue];
+                CGFloat max = [ins[@"max_val"] floatValue];
+                if (buyedPrice<max && buyedPrice>min) {
+                    singleIns = [ins[@"money"] floatValue];
+                    break;
+                }
+            }
+        }      
+        
+    }
+    
+    
+    
+    
+    
+    NSInteger count = res.passengers.count;
+    if (count==0) {
+        count = 1;
+    }
+    
+        singleIns = singleIns/100.0;
+        buyedPrice = buyedPrice/100.0;
+    if (is12306Dp) {
+        buyedPrice = buyedPrice*100;
+    }
+    
+    CGFloat totalP = 0.0;
+    for (NSDictionary *dict in res.passengers) {
+        totalP += [dict[@"price"] floatValue];
+    }
+    if (totalP<=0) {
+        totalP = buyedPrice*count;
+    }
+    payView.chepiaoPrice.text = [NSString stringWithFormat:@"共¥%.1f元",totalP];
+    payView.baoxianPrice.text = [NSString stringWithFormat:@"¥%.1f元x%ld",singleIns,(long)count];
+    CGFloat  totalprice = singleIns*count+buyedPrice*count;
+    if (is12306Dp) {
+        if (self.baoxianSwitch.isOn) {
+            totalprice = totalP + singleIns*count;
+        }else{
+            
+            payView.baoxianPrice.text = @"无";
+            totalprice = totalP;
+        }
+
+    }
+    
+    [payView.moneyBtn setTitle:[NSString stringWithFormat:@"实付款:¥%.1f元",totalprice] forState:UIControlStateNormal];
+    
+    self.baoxianlable.text = [NSString stringWithFormat:@"铁路意外险  %d元/份",(int)singleIns];
+    
+    
+    
+    
+    
+    
+}
+-(void)payAction:(NSDictionary *)info{
+    NSArray *arr = @[@"微信",@"支付宝"];
+    NSArray *ims = @[@"weixin",@"zhifu"];
+    __weak typeof(self) weakSelf = self;
+    CBAlertView *view = [[CBAlertView alloc]initWithTitle:@"请选择支付方式" actionsTitles:arr imgnames:ims showCancel:YES showSure:YES event:^(id value) {
+        NSLog(@"%@",value);
+        if ([value integerValue]==0) {
+            /*
+            if (![WXApi isWXAppInstalled]) {
+                UIAlertView *alert = [[UIAlertView alloc]initWithTitle:@"提示" message:@"您还未安装微信" delegate:self cancelButtonTitle:nil  otherButtonTitles:@"确定", nil];
+                alert.delegate = self;
+                [alert show];
+                return ;
+            }
+             
+            
+            if (![WXApi isWXAppInstalled] && ![WXApi isWXAppSupportApi])
+            {
+                [LoadingView showAMessage:@"请安装最新版微信客户端"];
+                return;
+            }
+             */
+            [weakSelf getPrepayID:1];
+        }else{
+            [weakSelf getPrepayID:2];
+            
+        }
+        
+        //        [view cancelAct];
+        
+    }];
+    
+    
+}
+-(void)getPrepayID:(NSInteger)index{
+    //    实参字段名			参考值				说明
+    //    UToken				*******				登录获取到的utoken
+    //    orderid									订单id
+    //    insurance								最贵票面保险
+    //    all_insurance							保险总额
+    //    apitype									1为线上订票，2为线上抢票，3为线下订票，4，线下抢票
+    //    paytype									1为微信支付，2为支付宝支付
+    NSInteger apitype = 1;
+    if (is12306Dp) {
+        apitype=1;
+    }else if(is12306Qp){
+        apitype=2;        
+    }else if (isrxDp) {
+        apitype=3;
+    }else if(isrxQp){
+        apitype=4;        
+    }
+    Customer *cus = res.passengers.firstObject;
+    if ([cus isKindOfClass:[NSDictionary class]]) {
+        cus = [Customer mj_objectWithKeyValues:cus];
+    }
+    CGFloat singleIns = [cus.insurance integerValue];//保险
+    if (is12306Dp) {
+        Customer *cus = res.passengers.firstObject;
+        if ([cus isKindOfClass:[NSDictionary class]]) {
+            cus = [Customer mj_objectWithKeyValues:cus];
+        }
+        CGFloat buyedPrice = [cus.price floatValue];//单张最高票价
+
+        if (baoxianInfo) {
+            for (NSDictionary *ins in baoxianInfo) {
+                if (ins[@"insurance_type"] && [ins[@"insurance_type"] integerValue]==1) {
+                    CGFloat min = [ins[@"min_val"] floatValue];
+                    CGFloat max = [ins[@"max_val"] floatValue];
+                    if (buyedPrice<max && buyedPrice>min) {
+                        singleIns = [ins[@"money"] floatValue];
+                        break;
+                    }
+                }
+            }      
+            
+        }
+        if (!_baoxianSwitch.isOn) {
+            singleIns = 0.0;
+        }
+    }
+    
+  
+    
+    
+    
+    
+    NSDictionary *par = @{@"UToken":UToken,@"orderid":self.orderid,@"insurance":@(singleIns),@"all_insurance":@(singleIns*res.passengers.count),@"apitype":@(apitype),@"paytype":@(index)};
+    NSLog(@"支付参数:%@",par);
+    
+    __weak typeof(self) weakSelf = self;
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:par] andUrl:@"Action/orderPay/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [LoadingView showAMessage:obj[@"msg"]];
+        });
+        NSLog(@"%@",[obj mj_JSONString]);
+        
+        if ([obj[@"code"] integerValue]==1) {
+            NSString *prepayid = obj[@"data"][@"prepay_id"];
+            
+            if (index==1) {
+                [weakSelf wxPayWithInfo:prepayid];
+            }else{
+                [weakSelf AliPayWithInfo:prepayid];
+                
+            }
+            
+            
+        }
+        [self.mainTableView reloadData];
+        
+    } andError:^(id error) {
+        
+    }];
+    
+    
+}
+
+#pragma mark - 微信支付
+-(void)wxPayWithInfo:(NSString *)prePayid{
+    AppDelegate *app = (AppDelegate *)[UIApplication sharedApplication].delegate;
+    app.wxpayDelegate = self;
+    
+    //    payRequsestHandler *req = [[payRequsestHandler alloc]init];
+    payRequsestHandler *req = [payRequsestHandler alloc] ;
+    //初始化支付签名对象
+    
+    [req init:APP_ID mch_id:MCH_ID];
+    //设置密钥
+    [req setKey:PARTNER_ID];
+    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+    
+    if ( prePayid != nil) {
+        //获取到prepayid后进行第二次签名
+        
+        NSString    *package, *time_stamp, *nonce_str;
+        //设置支付参数
+        time_t now;
+        time(&now);
+        time_stamp  = [NSString stringWithFormat:@"%ld", now];
+        nonce_str	= [time_stamp md5Hash];
+        
+        package         = @"Sign=WXPay";
+        //第二次签名参数列表
+        NSMutableDictionary *signParams = [NSMutableDictionary dictionary];
+        [signParams setObject: APP_ID        forKey:@"appid"];
+        [signParams setObject: nonce_str    forKey:@"noncestr"];
+        [signParams setObject: package      forKey:@"package"];
+        [signParams setObject: MCH_ID        forKey:@"partnerid"];
+        [signParams setObject: time_stamp   forKey:@"timestamp"];
+        [signParams setObject: prePayid     forKey:@"prepayid"];
+        
+        //生成签名
+        NSString *sign  = [req createMd5Sign:signParams];
+        
+        //添加签名
+        [signParams setObject: sign  forKey:@"sign"];
+        
+        dict = [NSMutableDictionary dictionaryWithDictionary:signParams];
+    }
+    if (dict) {
+        
+        //调起微信支付
+        PayReq *req2             = [[PayReq alloc] init];
+        req2.partnerId           = [dict objectForKey:@"partnerid"];
+        req2.prepayId            = [dict objectForKey:@"prepayid"];
+        req2.nonceStr            = [dict objectForKey:@"noncestr"];
+        req2.timeStamp           = [dict[@"timestamp"] integerValue];
+        req2.package             = [dict objectForKey:@"package"];
+        req2.sign                = [dict objectForKey:@"sign"];
+        
+        [WXApi sendReq:req2];
+        //日志输出
+        //NSLog(@"appid=%@\npartid=%@\nprepayid=%@\nnoncestr=%@\ntimestamp=%ld\npackage=%@\nsign=%@",[dict objectForKey:@"appid"],req.partnerId,req.prepayId,req.nonceStr,(long)req.timeStamp,req.package,req.sign );
+    }
+    
+    
+}
+#pragma mark 微信回调
+-(void)onResp:(BaseResp *)resp{
+    
+    
+    NSString *strMsg = [NSString stringWithFormat:@"errcode:%d", resp.errCode];
+    //    NSString *strTitle = @"";
+    NSDictionary *CodeDict = @{@"0":@"支付成功",@"-1":@"失败",@"-2":@"您点击了取消",@"-3":@"发送失败",@"-4":@"授权失败",@"-5":@"微信不支持"};
+    
+    if([resp isKindOfClass:[PayResp class]]){
+        
+        //支付返回结果，实际支付结果需要去微信服务器端查询
+        //        strTitle = [NSString stringWithFormat:@"支付结果"];
+        
+        switch (resp.errCode) {
+            case WXSuccess:
+            {
+                PaySuccessVc *vc = (PaySuccessVc *)[self getVCInBoard:@"Main" ID:@"PaySuccessVc"];
+                vc.isQp = isrxQp || is12306Qp;
+                
+                PUSH(vc);
+                
+
+            }
+                break;
+                
+            default:
+                
+                strMsg = [NSString stringWithFormat:@"支付结果：%@！",[CodeDict valueForKey:[NSString stringWithFormat:@"%d",resp.errCode]]];
+                UIAlertView *alert = [[UIAlertView alloc]initWithTitle:@"提示" message:strMsg delegate:self cancelButtonTitle:nil  otherButtonTitles:@"确定", nil];
+                alert.delegate = self;
+                [alert show];
+
+                break;
+        }
+    }
+    
+    NSLog(@"%@",resp.errStr );
+    
+}
+#pragma mark - 支付宝支付
+-(void)AliPayWithInfo:(NSString *)info{
+    __weak typeof(self) weakSelf = self;
+    [[AlipaySDK defaultService] payOrder:info fromScheme:@"zrggrwxappzfb" callback:^(NSDictionary *resultDic) {
+        [weakSelf handleAlipayResult:resultDic];
+        
+    }];
+}
+-(void)handleAlipayResult:(id)notif{
+    
+    NSDictionary *codeDic = @{@"9000":@"订单支付成功",
+                              @"8000":@"正在处理中",
+                              @"4000":@"订单支付失败",
+                              @"6001":@"您取消了支付",
+                              @"6002":@"网络连接出错"};
+    
+     NSString *status = @"";
+    
+    if ([notif isKindOfClass:[NSDictionary class]]) {
+        NSDictionary *diccc = (NSDictionary *)notif;
+        
+        status = diccc[@"resultStatus"]; 
+    }else{
+        NSNotification *notif111 = (NSNotification *)notif;
+        
+        status = notif111.object[@"resultStatus"] ;
+    }
+    
+    NSString *msg = codeDic[status];
+
+    if ([status isEqualToString:@"9000"]) {
+        PaySuccessVc *vc = (PaySuccessVc *)[self getVCInBoard:@"Main" ID:@"PaySuccessVc"];
+        vc.isQp = isrxQp || is12306Qp;
+        
+        PUSH(vc);
+        return;
+    }
+    if (msg) {
+        UIAlertView *alert = [[UIAlertView alloc]initWithTitle:@"提示" message:msg delegate:self cancelButtonTitle:nil  otherButtonTitles:@"确定", nil];
+        alert.delegate = self;
+        [alert show];
+    }
+    
+}
+-(void)changeBX:(UISwitch *)sw{
+    [self show12306Price ];
+}
+@end

@@ -1,0 +1,475 @@
+//
+//  SubmitOrderVc.m
+//  CommonProject
+//
+//  Created by gaoguangxiao on 2017/1/8.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "SubmitOrderVc.h"
+#import "ChoosePerson.h"
+#import "CBAlertView.h"
+#import "ChangyongPsvc.h"
+#import "OrderDetailAndPay.h"
+
+
+@interface SubmitOrderVc ()
+{
+    
+    CheCiRes *res;
+    NSArray *baoxianInfo;
+    UserInfo *shouhuoInfo;
+    
+    
+}
+@end
+
+@implementation SubmitOrderVc
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    if (!self.selectedCustomer) {
+        
+        self.selectedCustomer = [NSMutableArray array];
+    }
+    
+    self.shengyuLab.layer.masksToBounds = YES;
+    self.shengyuLab.layer.cornerRadius = 3;
+    [self updateChengkeView];
+    if (self.is12306dingpiao) {
+        self.title = @"12306订票";
+        self.zuoweiView.hidden = YES;
+        self.dibuView.hidden = YES;
+        self.submitBtn.top = self.chengekexinxiView.bottom+30;
+        
+    }else if(self.isspsm){
+        self.title = @"快递到家";
+        self.zuoweiView.hidden = YES;
+        self.dibuView.hidden = NO;
+        self.dibuView.top = self.chengekexinxiView.bottom;
+        self.submitBtn.top = self.chengekexinxiView.bottom+30;
+
+    }else if(self.issirendingzhi){
+        self.title  = @"私人订制";
+        self.zuoweiView.top = self.chengekexinxiView.bottom;
+        self.dibuView.top = self.zuoweiView.bottom;
+
+    }
+    
+    
+    
+   res = self.preObjvalue;
+    if (![self.preObjvalue isKindOfClass:[CheCiRes class]]) {
+        
+        for (NSObject *obj in self.preObjvalue) {
+            if ([obj isKindOfClass:[CheCiRes class]]) {
+                
+                res = self.preObjvalue;
+                break;
+            }
+        }
+    }
+    
+    
+    self.chufadi.text = res.from_station_name;
+    self.mudidi.text = res.to_station_name;
+    self.chufashijian.text = res.start_time;
+    self.daodashijian.text = res.arrive_time;
+    
+    
+    self.chufadi.text = res.from_station_name;
+    self.mudidi.text = res.to_station_name;
+    
+    self.lishi.text = [NSString stringWithFormat:@"%@分",[res.run_time stringByReplacingOccurrencesOfString:@":" withString:@"时"] ];
+    
+    self.chufashijian.text = res.start_time;
+    self.daodashijian.text = res.arrive_time;
+    self.checi.text = res.train_code;
+    if ([res.start_station_name isEqualToString:res.from_station_name]) {
+        if ([res.end_station_name isEqualToString:res.to_station_name]) {
+            self.indicatorView.image = [UIImage imageNamed:@"qi-zhong"];
+        }else{
+            self.indicatorView.image = [UIImage imageNamed:@"qi-zhuan"];
+            
+        }
+    }else{
+        if ([res.end_station_name isEqualToString:res.to_station_name]) {
+            self.indicatorView.image = [UIImage imageNamed:@"zhuan-zhong"];
+        }else{
+            self.indicatorView.image = [UIImage imageNamed:@"zhuan-zhuan"];
+            
+        }
+    }
+    self.zuoxi.text = self.buyedZuowei;
+    self.piaojia.text = [self.buyedPrice stringByAppendingString:@"¥"];
+//    20170215
+    NSMutableString *ss = [NSMutableString stringWithString:res.train_start_date];
+    [ss insertString:@"-" atIndex:4];
+    [ss insertString:@"-" atIndex:7];
+
+    NSString *timestr = [NSString stringWithFormat:@"%@ %@:00",ss,res.start_time] ;
+    
+    NSMutableString *ss2 = [NSMutableString stringWithString:res.train_start_date];
+    [ss2 insertString:@"年" atIndex:4];
+    [ss2 insertString:@"月" atIndex:7];
+    [ss2 insertString:@"日" atIndex:10];
+    NSString *fache =  [NSString stringWithFormat:@"%@ %@开",ss2,res.start_time] ;
+    self.facehtime.text = fache;
+    
+    NSDate *date1 = [AppManager dateFromString:timestr format:@"yyyy-MM-dd HH:mm:ss"];
+    NSDate *date2 = [NSDate date];
+    NSTimeInterval time=[date1 timeIntervalSinceDate:date2];
+    
+    int days=((int)time)/(3600*24);
+    int hours=((int)time)%(3600*24)/3600;
+    int minite=(((int)time)%(3600*24)%3600)/60;
+
+    NSString *dateContent = @"";
+    
+    if (days>0) {
+        dateContent = [[NSString alloc] initWithFormat:@"剩余 %i天%i小时",days,hours];
+    }else if(hours>=0 && minite>=0){
+        dateContent = [[NSString alloc] initWithFormat:@"剩余 %i小时%i分",hours,minite];
+
+    }
+    self.shengyuLab.text = dateContent;
+    
+
+    
+    [self updateChengkeView];
+    
+    
+    [self getBaoxian];
+    [self getShouhuo];
+}
+-(void)getShouhuo{
+    [_qupiaofangshi setTitle:@"快递到家" forState:UIControlStateNormal];
+    _qupiaofangshi.userInteractionEnabled = NO;
+    [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:@{@"UToken":UToken}] andUrl:@"Action/userInfo/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        if ([obj[@"code"] integerValue] == 1) {
+            NSDictionary *infoDic = obj[@"data"];
+            
+            shouhuoInfo = [UserInfo mj_objectWithKeyValues:infoDic];
+            if (shouhuoInfo.take_province) {
+                [_shoujianxixi setTitle:shouhuoInfo.take_pcc forState:UIControlStateNormal];
+                _shoujihao.text = shouhuoInfo.take_phone;
+            } 
+        }
+    } andError:nil];
+}
+-(void)getBaoxian{
+    [[Httprequest shareRequest] postObjectByParameters:nil andUrl:@"Index/Insurance/" showLoading:NO showMsg:NO isFullUrk:NO andComplain:^(id obj) {
+         baoxianInfo = obj[@"data"];
+    } andError:nil];
+}
+-(void)updateChengkeView{
+    
+    
+    [UIView animateWithDuration:0.3 animations:^{
+        CGFloat height = self.selectedCustomer.count*50 + 75;
+        self.chengekexinxiView.height = height;
+        self.chengekexinxiView.clipsToBounds = YES;
+        
+        NSInteger index= 100 ;
+        for (Customer *cus in self.selectedCustomer) {
+            UIView *view = [self.cklistView viewWithTag:index];
+            UILabel *l1 = [view viewWithTag:10];
+            l1.text = cus.name;
+            UILabel *l2 = [view viewWithTag:11];
+            l2.text = cus.type_name;
+            UILabel *l3 = [view viewWithTag:12];
+            l3.text = cus.id_number;
+            
+            
+            
+            
+            index+=1;
+        }
+        
+        
+        if (self.is12306dingpiao) {
+            self.submitBtn.top = self.chengekexinxiView.bottom+30;
+            
+        }else if(self.isspsm){
+            self.dibuView.top = self.chengekexinxiView.bottom;
+            self.submitBtn.top = self.dibuView.bottom+30;
+
+        }else if(self.issirendingzhi){
+            self.zuoweiView.top = self.chengekexinxiView.bottom;
+            self.dibuView.top = self.zuoweiView.bottom;
+            self.submitBtn.top = self.dibuView.bottom+30;
+
+        }
+        
+        CGFloat hh =  self.submitBtn.bottom+30;
+        
+        if (hh<=self.scrollview.height) {
+            hh=self.scrollview.height+1;
+        }
+        self.scrollview.contentSize = CGSizeMake(SWIDTH, hh);    } completion:nil];
+
+        
+}
+
+
+- (IBAction)deleteck:(UIButton *)sender {
+    NSInteger index = sender.superview.tag - 100;
+    if (index<self.selectedCustomer.count) {
+        [self.selectedCustomer removeObjectAtIndex:index];
+        [self updateChengkeView];
+    }
+}
+- (IBAction)tjckAction:(UIButton *)sender {
+    BOOL isLogin = [[NSUserDefaults standardUserDefaults]boolForKey:@"isrxlogin"];
+    if (!isLogin) {
+        
+        BaseViewController *vcv = (BaseViewController *)[AppManager getVCInBoard:nil ID:@"LoginVc"];
+        
+        vcv.preObjvalue = @"DZXZVc";
+        PUSH(vcv);
+        return;
+    }
+    
+    
+    
+    ChoosePerson *vc = (ChoosePerson *)[self getVCInBoard:nil ID:@"ChoosePerson"];
+    vc.preObjvalue = self.selectedCustomer;
+    vc.ischoose12306 = self.is12306dingpiao;
+    
+    __weak typeof(self) weakSelf = self;
+    vc.touchEvent = ^(id value){
+        if ([value isKindOfClass:[NSArray class]]) {
+            self.selectedCustomer = value;
+            [weakSelf updateChengkeView];
+        }  
+    };
+    PUSH(vc);
+}
+
+
+-(CGFloat)getMaxPrice{
+    
+    NSString *maxStr = @"";
+    if ([self.buyedZuoweiCode containsString:@"硬卧"]) {
+        maxStr = @"ywx_price";
+    }else if ([self.buyedZuoweiCode containsString:@"软卧"]) {
+        maxStr = @"rwx_price";
+    }else if ([self.buyedZuoweiCode containsString:@"高级软卧"]) {
+        maxStr = @"gjrwx_price";
+        
+    }else{
+        maxStr = self.buyedZuoweiCode;
+    }
+    CGFloat maxP = 0;
+    maxP = [[[res mj_keyValues] objectForKey:maxStr] floatValue];
+    
+    return maxP;
+    
+    
+}
+
+
+#pragma mark - 点击提交订单
+- (IBAction)submitAction:(UIButton *)sender {
+    if (self.selectedCustomer.count<1) {
+        [LoadingView showAMessage:@"请先选择乘客"];
+        return;
+    } 
+
+    if (self.issirendingzhi && self.shoujihao.text.length<5) {
+        [LoadingView showAMessage:@"请填写手机号"];
+        return;
+    }
+    CheCiRes *checi = res;
+    
+    if (!checi) {
+        return;
+    }
+    NSMutableDictionary *par = [NSMutableDictionary dictionary];
+    par[@"UToken"] = UToken;
+    par[@"checi"] = checi.train_code;
+    par[@"from_station_code"] = checi.from_station_code;
+    par[@"from_station_name"] = checi.from_station_name;
+    par[@"to_station_code"] = checi.to_station_code;
+    par[@"to_station_name"] = checi.to_station_name;
+   
+    par[@"runtime"] = checi.run_time;
+    par[@"is_accept_standing"] = @0 ;
+    
+    if ([self.buyedZuowei isEqualToString:@"无座"]) {
+        par[@"is_accept_standing"] = @1 ;
+        
+    }
+    NSMutableString *ss = [NSMutableString stringWithString:res.train_start_date];
+    [ss insertString:@"-" atIndex:4];
+    [ss insertString:@"-" atIndex:7];
+    
+    par[@"train_date"] = ss;
+    par[@"start_time"] = [NSString stringWithFormat:@"%@ %@:00" ,ss,checi.start_time];
+    
+    par[@"arrive_time"] = [NSString stringWithFormat:@"%@ %@:00" ,ss,checi.arrive_time];
+    
+    NSString *postUrl = @"Action/createBuyTicketOnline/";
+    
+    if (self.is12306dingpiao) {
+        
+        NSString *LoginUserName = [[NSUserDefaults standardUserDefaults] objectForKey:@"zh12306"];
+        NSString *LoginUserPassword = [[NSUserDefaults standardUserDefaults] objectForKey:@"mm12306"];
+        
+        par[@"LoginUserName"] = LoginUserName;
+        par[@"LoginUserPassword"] = LoginUserPassword;
+       
+        
+        NSMutableArray *passengers = [NSMutableArray array];
+        //        坐席类型CODE,9:商务座，P:特等座，M:一等座，O:二等座，6:高级软卧，4:软卧，3:硬卧，2:软座，1:硬座
+        //        票类型;1:成人票，2:儿童票，3:学生票，4:残军票
+        NSString *zwcode = [self zuoweiCodeWithName:self.buyedZuowei];
+        
+        for (Customer *cus in self.selectedCustomer) {
+            NSDictionary *passeng = @{@"passengersename":cus.name,@"passportseno":cus.id_number,@"passporttypeseidname":cus.id_name,@"passporttypeseid":@(cus.id_type),@"passengerid":cus.passengerid,@"zwname":self.buyedZuowei,@"zwcode":zwcode,@"price":self.buyedPrice,@"piaotype":@"1",@"cxin":@""};
+            
+            [passengers addObject:passeng];
+        }
+        
+        
+        par[@"passengers"] = passengers;
+
+    }else {
+
+        postUrl = @"Action/createBuyTicketOffline/";
+        
+        
+        
+        par[@"prompt_message"] = _zxddField.text;
+
+        
+        par[@"take_uname"] = @"张三";
+        par[@"take_phone"] = _shoujihao.text;
+        
+        par[@"sendtype"] = @"2";
+        NSInteger sendtype = 2;
+        if ([_qupiaofangshi.currentTitle isEqualToString:@"快递到家"]) {
+            par[@"sendtype"] = @"1";
+            sendtype = 1;
+            
+        }
+        if (sendtype==1) {
+            if (!shouhuoInfo) {
+                [LoadingView showAMessage:@"请选择收件信息"];
+                return;
+            }
+            par[@"take_province"] = shouhuoInfo.take_province;
+            par[@"take_city"] = shouhuoInfo.take_city;
+            par[@"take_county"] = shouhuoInfo.take_county;
+            par[@"take_address"] = shouhuoInfo.take_address;
+        }
+        
+        CGFloat maxP = [self getMaxPrice];
+        
+        par[@"max_price"] = @(maxP);
+
+        //乘客信息
+        NSMutableArray *passengers = [NSMutableArray array];
+        for (Customer *cus in self.selectedCustomer) {
+            NSString *zwcode = [self zuoweiCodeWithName:self.buyedZuowei];
+            NSDictionary *passeng = @{@"contacts_id":cus.passengerid,@"zwcode":zwcode,@"piaotype":@"1",@"cxin":@""};
+            
+            [passengers addObject:passeng];
+        }
+        par[@"passengers"] = passengers;
+
+        CGFloat money = [self.buyedPrice floatValue];
+        CGFloat singleIns = 0.0;
+        
+        if (baoxianInfo) {
+            for (NSDictionary *ins in baoxianInfo) {
+                if (ins[@"insurance_type"] && [ins[@"insurance_type"] integerValue]==3) {
+                    CGFloat min = [ins[@"min_val"] floatValue];
+                    CGFloat max = [ins[@"max_val"] floatValue];
+                    if (money<max && money>min) {
+                        singleIns = [ins[@"money"] floatValue];
+                        break;
+                    }
+                }
+            }
+        }
+        
+        
+        par[@"insurance"] = @(singleIns);
+        par[@"all_insurance"] = @(singleIns*passengers.count);
+        
+
+
+
+    }
+    
+               
+
+        
+        
+        [[Httprequest shareRequest] postObjectByParameters:[self getparametersWithDic:par] andUrl:postUrl showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+            if ([obj[@"code"] integerValue] == 1) {
+//                [self.navigationController popToRootViewControllerAnimated:YES];
+                NSString *orderid = obj[@"data"][@"orderid"];
+                
+                OrderDetailAndPay *vc = (OrderDetailAndPay *)[self getVCInBoard:nil ID:@"OrderDetailAndPay"];
+                
+                vc.orderid = orderid;
+                vc.url = self.is12306dingpiao?@"Action/buyRowOnline/":@"Action/buyRowOffline/";
+                vc.tuipiaoUrl = self.is12306dingpiao?@"Action/buyOnlineReturn/":@"Action/buyOfflineReturn/";
+                PUSH(vc);
+            }
+        } andError:^(id error) {
+            
+        }];   
+    
+}
+-(NSString *)zuoweiCodeWithName:(NSString *)name{
+    //        坐席类型CODE,9:商务座，P:特等座，M:一等座，O:二等座，6:高级软卧，4:软卧，3:硬卧，2:软座，1:硬座
+
+        NSString *code = @"";
+    if ([name isEqualToString:@"商务座"]) {
+        code = @"9";
+    }else if ([name isEqualToString:@"特等座"]) {
+        code = @"P";
+    }else if ([name isEqualToString:@"一等座"]) {
+        code = @"M";
+    }else if ([name isEqualToString:@"二等座"]) {
+        code = @"O";
+    }else if ([name isEqualToString:@"高级软卧"]) {
+        code = @"6";
+    }else if ([name isEqualToString:@"软卧"]) {
+        code = @"4";
+    }else if ([name isEqualToString:@"硬卧"]) {
+        code = @"3";
+    }else if ([name isEqualToString:@"软座"]) {
+        code = @"2";
+    }else if ([name isEqualToString:@"硬座"]) {
+        code = @"1";
+    }
+    return code;
+}
+- (IBAction)qupiao:(UIButton *)sender {
+    NSArray *arr = @[@"快递到家",@"送票到站"];
+    CBAlertView *view = [[CBAlertView alloc]initWithTitle:@"请选取取票方式" actionsTitles:arr imgnames:nil showCancel:YES showSure:NO event:^(id value) {
+        [sender setTitle:arr[[value integerValue]] forState:UIControlStateNormal];
+        
+        
+    }];
+}
+- (IBAction)shoujianact:(UIButton *)sender {
+    ChangyongPsvc *vc = (ChangyongPsvc *)[self getVCInBoard:@"Main" ID:@"ChangyongPsvc"];
+    vc.isfromChoose = YES;
+    
+    vc.touchEvent = ^(UserInfo *info){
+        shouhuoInfo = info;
+        
+        NSString *str = [NSString stringWithFormat:@"%@ %@",info.take_uname,info.take_pcc];
+        [sender setTitle:str forState:UIControlStateNormal];
+        
+    };
+    PUSH(vc);
+    
+}
+
+@end

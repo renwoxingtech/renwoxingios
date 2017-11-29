@@ -1,0 +1,413 @@
+//
+//  HomeViewController.m
+//  CommonProject
+//
+//  Created by mac on 2016/12/20.
+//  Copyright © 2016年 mac. All rights reserved.
+//
+
+#import "HomeViewController.h"
+#import "NSString+Hash.h"
+#import "CocoaSecurity.h"
+#import "NSString+Encryption.h"
+#import "RSA.h"
+
+#import "CBAlertView.h"
+#import "SearchResVc.h"
+#import "SDCycleScrollView.h"
+#import "AppDelegate.h"
+
+#import "HZQDatePickerView.h"
+
+@interface HomeViewController ()
+{
+    NSMutableArray <TrainStation *>*stationArr;
+    SDCycleScrollView *bannerScrollView;
+    NSArray *bannerData;
+    TrainStation *chufadiSt;
+    TrainStation *mudidiSt;
+    HZQDatePickerView *_pikerView;
+    
+}
+@end
+
+@implementation HomeViewController
+-(void)hideStart:(UIButton *)btn{
+    UIView *view = btn.superview;
+    if (view) {
+        [UIView animateWithDuration:0.24 animations:^{
+            view.alpha = 0.0;
+            view.transform = CGAffineTransformMakeScale(1.5, 1.5);
+        } completion:^(BOOL finished) {
+            [view removeFromSuperview];
+            
+        }];
+    }
+}
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.navigationController.navigationBar.hidden = YES;
+    self.navBar.hidden = YES;
+    
+
+    [self initStation];
+    
+//    [self testLogin:nil];
+//     [self yupiaoSearchst1:stationArr[0] st2:stationArr[20]];
+    
+    
+    if(/* DISABLES CODE */ (0)){
+        
+        AppDelegate *app = (AppDelegate *)[UIApplication sharedApplication].delegate;
+        UIView *startView = [[[NSBundle mainBundle] loadNibNamed:@"StartView" owner:nil options:nil] firstObject];
+        startView.frame = self.view.frame;
+        
+        [app.window addSubview:startView];
+        
+        UIButton *tg = [startView viewWithTag:2];
+        [tg addTarget:self action:@selector(hideStart:) forControlEvents:UIControlEventTouchUpInside];
+        
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [tg setTitle:@"1 跳过" forState:UIControlStateNormal];
+        });
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [tg setTitle:@"0 跳过" forState:UIControlStateNormal];
+            [self hideStart:tg];
+        });
+        
+    }
+
+    [self.chooeseDate setTitle:[AppManager getCurrentTimeStrWithformat:@"yyyy-MM-dd"] forState:UIControlStateNormal];
+    [self setupBanner];
+    
+    
+}
+-(void)loadNetData{
+    [[Httprequest shareRequest] postObjectByParameters:nil andUrl:@"Index/getBanner/" showLoading:YES showMsg:YES isFullUrk:NO andComplain:^(id obj) {
+        NSDictionary *dict = (NSDictionary *)obj;
+        if (dict) {
+            bannerData = dict[@"data"];
+            NSMutableArray *urls = [NSMutableArray array];
+            for (NSDictionary *dic in bannerData) {
+                [urls addObject:dic[@"imgurl"]];
+                
+            }
+            bannerScrollView.imageURLStringsGroup = urls;
+            
+        }
+    } andError:^(id error) {
+        
+    }];
+}
+-(void)setupBanner{
+    
+        NSArray *arr = @[@""];
+    //UI元素的frame调整
+    bannerScrollView = [SDCycleScrollView cycleScrollViewWithFrame:CGRectMake(0, 0, SWIDTH,SWIDTH/(375/160.0)) imageURLStringsGroup:arr];
+    
+    bannerScrollView.delegate = self;
+    bannerScrollView.dotColor = [UIColor whiteColor]; //分页控件小圆标颜色
+    bannerScrollView.pageControlDotSize = CGSizeMake(5, 5); //分页控件小圆标大小
+    
+    bannerScrollView.pageControlAliment = SDCycleScrollViewPageContolAlimentRight;
+    bannerScrollView.autoScrollTimeInterval = 6;
+    bannerScrollView.backgroundColor = [UIColor colorWithRed:0.9207 green:0.9158 blue:0.9255 alpha:1.0];
+    bannerScrollView.placeholderImage = [UIImage imageNamed:@"placeH"];
+    
+    [self.view addSubview:bannerScrollView];
+    
+    
+}
+- (void)cycleScrollView:(SDCycleScrollView *)cycleScrollView didSelectItemAtIndex:(NSInteger)index{
+//    
+//    if ([cycleScrollView isEqual:HQScrollView]) {
+//        return;
+//    }
+//    
+//    NSMutableArray *urlArr = [NSMutableArray array];
+//    for (Topnews *tpnews in home.topnews) {
+//        [urlArr addObject:tpnews.topnewsurl];
+//    }
+//    PLZXDetailViewController *vc = (PLZXDetailViewController *)[PLBaseViewController getVCInBoard:nil ID:@"PLZXDetailViewController"];
+//    vc.isZX = YES;
+//    vc.urlStr = urlArr[index];
+//    [self.navigationController pushViewController:vc animated:YES];
+    
+    
+}
+
+
+-(void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event{
+//    CBAlertView *vv = [[CBAlertView alloc]initWithTitle:@"提示" actionsTitles:@[@"吃",@"阿萨德刚切割人工湖",@"收到",@"碍事"] imgnames:nil showCancel:YES showSure:YES event:^(id value) {
+//        
+//    }];
+}
+-(void)initStation{
+    stationArr = [NSMutableArray array];
+    
+    NSString *path = [[NSBundle mainBundle] pathForResource:@"all_stations" ofType:@"txt"];
+    NSString *str = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil];
+    if (str) {
+        NSArray *all = [str componentsSeparatedByString:@"@"];
+        
+        for (NSString *str  in all) {
+            NSArray *tmp = [str componentsSeparatedByString:@"|"];
+            /*
+             bjb,
+             北京北,
+             VAP,
+             beijingbei,
+             bjb,
+             0
+             */
+            
+            
+            
+            TrainStation *station = [[TrainStation alloc]init];
+            station.code = tmp[0];
+            station.name = tmp[1];
+            station.szm = tmp[2];
+            station.pinyin = tmp[3];
+//            station.pinyinStr = [self chineseToPinyin:station.name];
+            [stationArr addObject:station];
+        }
+        
+    }
+    NSArray *sortDescriptors = [NSArray arrayWithObject:[NSSortDescriptor sortDescriptorWithKey:@"pinyin" ascending:YES]];
+    [stationArr sortUsingDescriptors:sortDescriptors];
+
+    [stationArr enumerateObjectsUsingBlock:^(TrainStation * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if ([obj.name isEqualToString:@"北京"]) {
+            chufadiSt = obj;
+        } 
+        if ([obj.name isEqualToString:@"上海"]) {
+            mudidiSt = obj;
+        } 
+    }];
+    
+    [self setStaionTtile];
+}
+-(NSString *)chineseToPinyin:(NSString *)chinese{
+    //将汉字转化成拼音的代码：
+    NSMutableString *mutableString = [NSMutableString stringWithString:chinese];
+    CFStringTransform((CFMutableStringRef)mutableString, NULL, kCFStringTransformToLatin, false);
+    CFStringTransform((CFMutableStringRef)mutableString, NULL, kCFStringTransformStripDiacritics, false);
+    
+    mutableString =(NSMutableString *)[mutableString stringByReplacingOccurrencesOfString:@" " withString:@""];
+    return mutableString;
+}
+-(void)yupiaoSearchst1:(TrainStation *)station1 st2:(TrainStation *)station2{
+    NSMutableDictionary *parameters = [NSMutableDictionary dictionary];
+    NSString *key = @"AwCT4ccslMB3TFQ6M8H6qadrOT8ZCXVg";
+    parameters[@"partnerid"] = @"bjrwx";
+    parameters[@"reqtime"] = [AppManager getCurrentTimeStrWithformat:@"yyyyMMddHHmmss"];//yyyyMMddHHmmss
+    NSString *md5Key = [key md5Hash];
+    NSLog(@"md5Key   %@",md5Key);
+    parameters[@"method"] = @"train_query";
+    parameters[@"method"] = @"get_train_info";
+    NSString *sign = [NSString stringWithFormat:@"%@%@%@%@",parameters[@"partnerid"],parameters[@"method"],parameters[@"reqtime"],md5Key];
+    NSLog(@"sign   %@",sign);
+    parameters[@"sign"] = [sign md5Hash];//md5(partnerid+method+reqtime+md5(key))
+    
+    
+    parameters[@"train_no"] = @"240000G1010C";
+    parameters[@"train_code"] = @"G101";
+    
+    
+    
+    parameters[@"train_date"] = [AppManager getCurrentTimeStrWithformat:@"yyyy-MM-dd"];//yyyy-MM-dd
+    
+    //    parameters[@"from_station"] = station1.szm;
+    //    parameters[@"to_station"] = station2.szm;
+    parameters[@"from_station"] = @"VNP";
+    parameters[@"to_station"] = @"AOH";
+    //    parameters[@"purpose_codes"] = @"ADULT";
+    //    parameters[@"needdistance"] = @"0";
+    
+    NSLog(@"%@",[parameters mj_JSONString]);
+    
+    
+    
+    
+    
+    
+    //    NSString *url = [NSString stringWithFormat:@"http://searchtrain.hangtian123.net/trainSearch?"];
+    //    NSString *par = [NSString stringWithFormat:@"jsonStr=%@",[parameters mj_JSONString]];
+    //    NSString *getUrl = [url stringByAppendingString:par];
+    //get
+    //    [[NetRequest shareRequest] requestWithUrl:getUrl parameters:nil isJsonpar:NO  isPost:NO andComplain:^(id obj) {
+    //        
+    //    } andError:^(id error) {
+    //        
+    //    }];
+    
+    //post
+    NSString *posturl = [NSString stringWithFormat:@"http://searchtrain.hangtian123.net/trainSearch"];
+    
+    NSDictionary *postPar = @{@"jsonStr":[parameters mj_JSONString]};
+    
+    [[Httprequest shareRequest] postObjectByParameters:postPar andUrl:posturl showLoading:YES showMsg:YES isFullUrk:YES andComplain:^(id obj) {
+        NSLog(@"");
+    } andError:nil];
+
+
+}
+-(void)testLogin:(NSData *)par{
+    NSURLSession *session = [NSURLSession sharedSession];
+    
+    NSURL *url = [NSURL URLWithString:@"http://trainorder.test.hangtian123.net/cn_interface/trainAccount/validate"];
+    
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    
+    request.HTTPMethod = @"POST";
+    
+    request.HTTPBody = par;
+    
+    NSString *endStr = @"{\"data\":{\"trainAccount\":\"18515065942\",\"pass\":\"123456\"},\"accountversion\":\"2\"}";
+    
+    request.HTTPBody = [endStr dataUsingEncoding:NSUTF8StringEncoding];
+    
+    [request setValue:@"application/json;charset=utf-8" forHTTPHeaderField:@"Content-Type"];
+    
+    
+    
+    
+    NSURLSessionDataTask *dataTask = [session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        
+        @try {
+            NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
+            if ([dict[@"items"] isKindOfClass:[NSArray class]]) {
+                
+            }
+            NSLog(@"%@",dict);
+        } @catch (NSException *exception) {
+            
+        } @finally{
+            
+        }
+        
+    }];
+    [dataTask resume];
+    
+    
+}
+
+- (void)desTest {
+    
+    //    @"{\"data\":\"39HSEPWjm5doX6jaYmdJWEiTeMO4vkUP4ySl-jzTiDofhlZBvyWAdFI4H-6YYYUJ\",\"accountversion\":\"2\"}"
+    
+    
+    
+    
+    NSString *plainText = @"{\"trainAccount\":\"18515065942\",\"pass\":\"123456\"}";
+    
+    
+    NSLog(@"加密源：%@",plainText);
+    
+    NSString *key = @"v66r9ogtcvtxv3v4xq3gog8fqdbhwmt0";
+    NSString *desBase64 = [plainText desEncryptWithKey:key];
+    NSData *keydata = [key dataUsingEncoding:NSUTF8StringEncoding];
+    NSData *desData = [plainText desEncryptWithDataKey:keydata];
+    [desData writeToFile:@"/Users/mac/Desktop/desdata.txt" atomically:YES];
+    NSLog(@"DES加密：%@ data:%@",desBase64,desData);
+    
+    NSString *parameters = [NSString stringWithFormat:@"{\"data\":\"%@\",\"accountversion\":\"2\"}",desBase64];
+    NSLog(@"json:\n%@",parameters);
+    
+    [self testLogin:[parameters dataUsingEncoding:NSUTF8StringEncoding]];
+    
+    
+    //解密
+    //    NSString *decryptStr = [desBase64 desDecryptWithKey:key];
+    //    NSData *data = [NSString desDecryptWithData:desData dataKey:keydata];
+    //    NSLog(@"解密后：%@  ---  %@",decryptStr,data);
+    
+    
+    
+}
+
+- (IBAction)searchAction:(UIButton *)sender {
+    BaseViewController *vc = (BaseViewController *)[self getVCInBoard:nil ID:@"SearchResVc"];
+    vc.preObjvalue = @[chufadiSt,mudidiSt,_chooeseDate.currentTitle,@(_dtdc.isOn),@(_xsp.isOn)];
+    [self.navigationController pushViewController:vc animated:YES];
+    
+}
+- (IBAction)chudfadi:(UIButton *)sender {
+    BaseViewController *vc = (BaseViewController *)[self getVCInBoard:nil ID:@"ChoeseStationVC"];
+    vc.touchEvent = ^(id value){
+        TrainStation *st = value;
+        chufadiSt = st;
+        
+        [sender setTitle:st.name forState:UIControlStateNormal];
+        NSLog(@"选择了:%@",st.name);
+    };
+    PUSH(vc);
+    
+
+}
+- (IBAction)mudidi:(UIButton *)sender {
+    BaseViewController *vc = (BaseViewController *)[self getVCInBoard:nil ID:@"ChoeseStationVC"];
+    vc.touchEvent = ^(id value){
+        TrainStation *st = value;
+        mudidiSt = st;
+        
+        [sender setTitle:st.name forState:UIControlStateNormal];
+        NSLog(@"选择了:%@",st.name);
+    };
+    PUSH(vc);
+}
+
+- (IBAction)dateAction:(UIButton *)sender {
+    [self setupDateView:DateTypeOfStart];
+    
+}
+
+- (IBAction)gtdcswAction:(UISwitch *)sender {
+    
+}
+
+- (IBAction)xspAction:(UISwitch *)sender {
+    
+}
+
+- (IBAction)qiehuanAction:(UIButton *)sender {
+    TrainStation *st = chufadiSt;
+    chufadiSt = mudidiSt;
+    mudidiSt = st;
+    [self setStaionTtile];
+
+}
+- (IBAction)lishiClick:(id)sender {
+    [self setStaionTtile];
+}
+-(void)setStaionTtile{
+    [_chufadiBtn setTitle:chufadiSt.name forState:UIControlStateNormal];
+    [_mudidiBtn setTitle:mudidiSt.name forState:UIControlStateNormal];
+}
+- (void)setupDateView:(DateType)type {
+    
+    _pikerView = [HZQDatePickerView instanceDatePickerView];
+    _pikerView.frame = CGRectMake(0, 0, SWIDTH, SHEIGHT + 20);
+    [_pikerView setBackgroundColor:[UIColor clearColor]];
+    _pikerView.delegate = self;
+    _pikerView.type = type;
+    // 今天开始往后的日期
+    [_pikerView.datePickerView setMinimumDate:[NSDate date]];
+//    NSDate *cur = [NSDate date];
+    
+    NSInteger oneDay = 24*60*60*1;  //1天的长度
+    
+   NSDate *theDate = [[NSDate date] initWithTimeIntervalSinceNow: +oneDay*30]; 
+    // 在今天之前的日期
+        [_pikerView.datePickerView setMaximumDate:theDate];
+    [self.view addSubview:_pikerView];
+    
+}
+
+- (void)getSelectDate:(NSString *)date type:(DateType)type {
+    NSLog(@"%d - %@", type, date);
+    [_chooeseDate setTitle:date forState:UIControlStateNormal];
+   
+}
+
+@end

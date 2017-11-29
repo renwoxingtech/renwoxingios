@@ -1,0 +1,31 @@
+//
+//  SubmitOrderVc.h
+//  CommonProject
+//
+//  Created by gaoguangxiao on 2017/1/8.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "BaseViewController.h"
+
+@interface SubmitOrderVc : BaseViewController
+@property (weak, nonatomic) IBOutlet UIButton *submitBtn;
+- (IBAction)submitAction:(UIButton *)sender;
+@property (weak, nonatomic) IBOutlet UIView *zuoweijiageview;
+@property (weak, nonatomic) IBOutlet UIScrollView *scrollview;
+@property (weak, nonatomic) IBOutlet UILabel *shengyuLab;
+@property (weak, nonatomic) IBOutlet UIView *topBgView;
+@property (weak, nonatomic) IBOutlet UILabel *chufadi;
+@property (weak, nonatomic) IBOutlet UILabel *mudidi;
+@property (weak, nonatomic) IBOutlet UILabel *chufashijian;
+@property (weak, nonatomic) IBOutlet UILabel *daodashijian;
+@property (weak, nonatomic) IBOutlet UILabel *lishi;
+@property (weak, nonatomic) IBOutlet UILabel *zuoxi;
+@property (weak, nonatomic) IBOutlet UILabel *piaojia;
+
+@property (weak, nonatomic) IBOutlet UIView *shijianView;
+@property (weak, nonatomic) IBOutlet UIView *chengekexinxiView;
+@property (weak, nonatomic) IBOutlet UIView *zuoweiView;
+@property (weak, nonatomic) IBOutlet UIView *dibuView;
+@property (weak, nonatomic) IBOutlet UILabel *checi;
+@end

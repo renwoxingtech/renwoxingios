@@ -1,0 +1,159 @@
+//
+//  GaiQianVC.m
+//  CommonProject
+//
+//  Created by mac on 2017/5/4.
+//  Copyright © 2017年 mac. All rights reserved.
+//
+
+#import "GaiQianVC.h"
+#import "CalenderView.h"
+#import "SearchResVc.h"
+
+@interface GaiQianVC ()
+{
+    CalenderView *calender;
+    NSString *dayStr;
+  NSString *dayday;
+    TrainStation *chufadiSt;
+    TrainStation *mudidiSt;
+    
+}
+@end
+
+@implementation GaiQianVC
+-(void)viewWillDisappear:(BOOL)animated{
+    [super viewWillDisappear:animated];
+    [calender.superview removeFromSuperview];
+}
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"改签/变更到站";
+    [_stateInfoBtn setTitle:_daodaStr forState:0];
+   [self initStation];
+    [self.stationArr enumerateObjectsUsingBlock:^(TrainStation * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if ([obj.szm isEqualToString:_chufaStrCode]) {
+            chufadiSt = obj;
+        }
+        if ([obj.szm isEqualToString:_daodaStrCode]) {
+            mudidiSt = obj;
+        }
+    }];
+    
+    NSLog(@"%@   %@",chufadiSt.name,mudidiSt.name);
+    NSDate *date = [NSDate date];
+    NSDateFormatter *fmt = [[NSDateFormatter alloc]init];
+    fmt.dateFormat = @"yyyy-MM-dd";
+    dayday = [fmt stringFromDate:date];
+    NSMutableString *tit = [NSMutableString stringWithString:dayday];
+    [tit replaceCharactersInRange:NSMakeRange(4, 1) withString:@"年"];
+    [tit replaceCharactersInRange:NSMakeRange(7, 1) withString:@"月"];
+    [tit appendString:@"日"];
+
+    [_dateBtn setTitle:[NSString stringWithFormat:@"%@ 今天",tit] forState:UIControlStateNormal];
+}
+
+- (void)getSelectDate:(NSString *)date type:(NSInteger)type {
+
+
+//    NSDate *date2 = [AppManager dateFromString:date format:@"yyyy-MM-dd"];
+    NSString *today = [AppManager stringFromDate:[NSDate date] format:@"yyyy-MM-dd"];
+    NSString *tomorrow = [AppManager stringFromDate:[NSDate dateWithTimeIntervalSinceNow:3600*24] format:@"yyyy-MM-dd"];
+    NSString *afterTom = [AppManager stringFromDate:[NSDate dateWithTimeIntervalSinceNow:3600*24*2] format:@"yyyy-MM-dd"];
+     dayStr = @"";
+    if ([date isEqualToString:today]) {
+        dayStr = @"今天";
+    }else
+        if ([date isEqualToString:tomorrow]) {
+            dayStr = @"明天";
+        }else
+            if ([date isEqualToString:afterTom]) {
+                dayStr = @"后天";
+            };
+            NSMutableString *tit = [NSMutableString stringWithString:date];
+            [tit replaceCharactersInRange:NSMakeRange(4, 1) withString:@"年"];
+            [tit replaceCharactersInRange:NSMakeRange(7, 1) withString:@"月"];
+            [tit appendString:@"日"];
+
+    [_dateBtn setTitle:[NSString stringWithFormat:@"%@ %@",tit,dayStr] forState:UIControlStateNormal];
+    
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+/*
+#pragma mark - Navigation
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+}
+*/
+
+- (IBAction)changeStateInfoAction:(UIButton *)sender {
+    BaseViewController *vc = (BaseViewController *)[self getVCInBoard:nil ID:@"ChoeseStationVC"];
+    vc.touchEvent = ^(id value){
+        TrainStation *st = value;
+        mudidiSt = st;
+        [sender setTitle:st.name forState:UIControlStateNormal];
+        NSLog(@"选择了:%@",st.name);
+    };
+    PUSH(vc);
+}
+
+- (IBAction)changeDateAction:(UIButton *)sender {
+    UIView *view = [[UIView alloc]initWithFrame:self.view.frame];
+    view.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.5];
+    view.layer.cornerRadius = 1;
+    view.layer.masksToBounds = YES;
+    [self.view addSubview:view];
+
+    NSDictionary *peizhiPar = [[NSUserDefaults standardUserDefaults]objectForKey:@"peizhiPar"];
+
+    NSInteger oneDay = 24*60*60*1;  //1天的长度
+    NSInteger userDay = [[peizhiPar objectForKey:@"advance"] integerValue];
+    NSInteger stuDay = [[peizhiPar objectForKey:@"student_advance"] integerValue];
+    if (userDay==0 || stuDay==0) {
+        userDay = 60;
+        stuDay = 75;
+    }
+    NSInteger day  = userDay;
+    if (self.xsp) {
+        day = stuDay;
+    }
+    calender = [[CalenderView alloc]initWithFrame:CGRectMake(30, 50, SWIDTH-60, 400)  andMaxDays:(int)day];
+    calender.layer.cornerRadius = 5;
+    calender.clipsToBounds = YES;
+    calender.height = calender.viewHeight;
+    calender.centerY = view.centerY;
+    __weak typeof(self) weakSelf = self;
+
+    calender.getDate = ^(NSString *str){
+        NSLog(@"%@",str);
+        dayday = str;
+        [weakSelf getSelectDate:str type:1];
+//        NSMutableString *tit = [NSMutableString stringWithString:str];
+//        [tit replaceCharactersInRange:NSMakeRange(4, 1) withString:@"年"];
+//        [tit replaceCharactersInRange:NSMakeRange(7, 1) withString:@"月"];
+//        [tit appendString:@"日"];
+//
+//        [weakSelf.dateBtn setTitle:tit forState:UIControlStateNormal];
+    };
+    [view addSubview:calender];
+}
+
+- (IBAction)gaiqianAction:(UIButton *)sender {
+     [[NSUserDefaults standardUserDefaults]setObject:@"" forKey:SelectCheCiKey];
+    SearchResVc *vc = (SearchResVc *)[self getVCInBoard:nil ID:@"SearchResVc"];
+    vc.preObjvalue = @[chufadiSt,mudidiSt,dayday,@(0),@(1)];
+    vc.xsp = 1;
+    vc.from =  6;
+    vc.orderID = self.orderID;
+    vc.orderURL = self.orderURL;
+    [self.navigationController pushViewController:vc animated:YES];
+}
+@end
